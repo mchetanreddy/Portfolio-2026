@@ -2872,3 +2872,483 @@ body:hover .cursor-outline {
         transform: none;
     }
 }
+
+/* ==========================================
+   STRINGTUNE INTEGRATION STYLES
+   Awwwards-quality effects
+   ========================================== */
+
+/* StringTune Smooth Scroll Override */
+html.has-scroll-smooth {
+    overflow: hidden;
+}
+
+html.has-scroll-smooth body {
+    overflow: hidden;
+}
+
+[data-string-smooth-scroll] {
+    overflow: hidden;
+}
+
+/* StringTune Custom Cursor */
+.string-cursor {
+    pointer-events: none;
+    position: fixed;
+    z-index: 99999;
+    mix-blend-mode: difference;
+}
+
+.string-cursor .cursor-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--color-primary);
+    border-radius: 50%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    transform: translate(-50%, -50%);
+    transition: transform 0.1s ease, width 0.2s ease, height 0.2s ease, background 0.2s ease;
+    pointer-events: none;
+    z-index: 99999;
+}
+
+.string-cursor .cursor-outline {
+    width: 40px;
+    height: 40px;
+    border: 2px solid var(--color-primary);
+    border-radius: 50%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    transform: translate(-50%, -50%);
+    transition: transform 0.15s ease-out, width 0.3s ease, height 0.3s ease, border-color 0.3s ease;
+    pointer-events: none;
+    z-index: 99998;
+    opacity: 0.6;
+}
+
+/* Cursor states on hover */
+a:hover ~ .string-cursor .cursor-dot,
+button:hover ~ .string-cursor .cursor-dot,
+[data-string-magnetic]:hover ~ .string-cursor .cursor-dot {
+    transform: translate(-50%, -50%) scale(2);
+    background: var(--color-secondary);
+}
+
+a:hover ~ .string-cursor .cursor-outline,
+button:hover ~ .string-cursor .cursor-outline,
+[data-string-magnetic]:hover ~ .string-cursor .cursor-outline {
+    transform: translate(-50%, -50%) scale(1.5);
+    border-color: var(--color-secondary);
+}
+
+/* StringTune Progress Animations */
+[data-string-progress] {
+    --progress: 0;
+    opacity: 0;
+    transform: translateY(60px);
+    transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-string-progress].is-inview,
+[data-string-progress].in-view {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* StringTune Split Text Animations */
+[data-string-split] {
+    overflow: hidden;
+}
+
+[data-string-split] .char,
+[data-string-split] .word,
+[data-string-split] .line {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(100%);
+    transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-string-split].split-animated .char,
+[data-string-split].split-animated .word,
+[data-string-split].split-animated .line,
+.is-inview [data-string-split] .char,
+.is-inview [data-string-split] .word,
+.is-inview [data-string-split] .line {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Character reveal with stagger */
+.char-reveal {
+    display: inline-block;
+    animation: charReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation-delay: calc(var(--char-index, 0) * 0.03s);
+    opacity: 0;
+    transform: translateY(100%);
+}
+
+@keyframes charReveal {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Glitch character effect */
+.glitch-char {
+    display: inline-block;
+    position: relative;
+    animation: glitchChar 3s infinite;
+    animation-delay: calc(var(--char-index, 0) * 0.05s);
+}
+
+@keyframes glitchChar {
+    0%, 90%, 100% {
+        transform: translateY(0) skewX(0);
+        opacity: 1;
+    }
+    92% {
+        transform: translateY(-2px) skewX(5deg);
+        opacity: 0.8;
+        color: var(--color-secondary);
+    }
+    94% {
+        transform: translateY(2px) skewX(-5deg);
+        opacity: 0.9;
+        color: var(--color-accent);
+    }
+    96% {
+        transform: translateY(0) skewX(0);
+        opacity: 1;
+    }
+}
+
+/* Gradient character effect */
+.gradient-char {
+    display: inline-block;
+    animation: gradientChar 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation-delay: calc(var(--char-index, 0) * 0.04s);
+    opacity: 0;
+    transform: translateY(50px) rotateX(-90deg);
+    transform-origin: center bottom;
+}
+
+@keyframes gradientChar {
+    to {
+        opacity: 1;
+        transform: translateY(0) rotateX(0);
+    }
+}
+
+/* StringTune Parallax Elements */
+[data-string-parallax] {
+    will-change: transform;
+    transition: transform 0.1s linear;
+}
+
+/* StringTune Glide Effect */
+[data-string-glide] {
+    will-change: transform;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* StringTune Magnetic Effect */
+[data-string-magnetic] {
+    will-change: transform;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-string-magnetic]:hover {
+    z-index: 10;
+}
+
+/* Enhanced hover states for magnetic elements */
+.btn[data-string-magnetic] {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn[data-string-magnetic]::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+                rgba(var(--color-primary-rgb), 0.3) 0%,
+                transparent 50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.btn[data-string-magnetic]:hover::before {
+    opacity: 1;
+}
+
+/* Card magnetic tilt effect */
+.service-card[data-string-magnetic],
+.project-card[data-string-magnetic],
+.timeline-card[data-string-magnetic],
+.highlight-card[data-string-magnetic] {
+    transform-style: preserve-3d;
+    perspective: 1000px;
+}
+
+.service-card[data-string-magnetic]:hover,
+.project-card[data-string-magnetic]:hover,
+.timeline-card[data-string-magnetic]:hover,
+.highlight-card[data-string-magnetic]:hover {
+    transform: translateY(-10px);
+    box-shadow:
+        0 25px 50px -12px rgba(0, 0, 0, 0.5),
+        0 0 30px rgba(var(--color-primary-rgb), 0.2);
+}
+
+/* StringTune Progress Bar */
+.scroll-progress[data-string-progress] {
+    opacity: 1;
+    transform: none;
+}
+
+/* Enhanced floating elements with parallax */
+.floating-shape[data-string-parallax],
+.floating-orb[data-string-parallax] {
+    transition: transform 0.2s ease-out;
+}
+
+/* Section backgrounds with parallax */
+.bg-image[data-string-parallax] {
+    transform: scale(1.2);
+    will-change: transform;
+}
+
+/* Geometric elements with glide */
+.geo-cube[data-string-glide] {
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.geo-ring[data-string-parallax] {
+    transition: transform 0.3s ease-out;
+}
+
+/* Skill orbs with glide */
+.skill-orb[data-string-glide] {
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.skill-orb[data-string-glide]:hover {
+    transform: translateY(-10px) scale(1.02);
+}
+
+/* Timeline cards with enhanced glide */
+.timeline-card[data-string-glide] {
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.4s ease;
+}
+
+/* Contact items with glide */
+.contact-item[data-string-glide] {
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                background 0.3s ease;
+}
+
+/* Social links with magnetic */
+.social-link[data-string-magnetic] {
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                color 0.3s ease,
+                box-shadow 0.3s ease;
+}
+
+.social-link[data-string-magnetic]:hover {
+    color: var(--color-primary);
+    box-shadow: 0 0 30px rgba(var(--color-primary-rgb), 0.4);
+}
+
+/* Nav links with magnetic */
+.nav-link[data-string-magnetic] {
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                color 0.3s ease;
+}
+
+/* Section number parallax */
+.section-number[data-string-parallax] {
+    transition: transform 0.3s ease-out;
+}
+
+/* Meter items with glide */
+.meter-item[data-string-glide] {
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.meter-item[data-string-glide]:hover {
+    transform: translateX(5px);
+}
+
+/* Project images with parallax */
+.project-image .image-bg[data-string-parallax] {
+    transition: transform 0.4s ease-out;
+}
+
+/* Enhanced in-view states */
+.is-inview .meter-fill {
+    width: var(--fill);
+}
+
+.is-inview .stat-ring-fill {
+    stroke-dashoffset: calc(283 - (283 * var(--progress, 0.8)));
+}
+
+/* Staggered reveal for lists */
+.service-features li {
+    opacity: 0;
+    transform: translateX(-20px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.is-inview .service-features li {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.is-inview .service-features li:nth-child(1) { transition-delay: 0.1s; }
+.is-inview .service-features li:nth-child(2) { transition-delay: 0.2s; }
+.is-inview .service-features li:nth-child(3) { transition-delay: 0.3s; }
+.is-inview .service-features li:nth-child(4) { transition-delay: 0.4s; }
+
+/* Tags staggered reveal */
+.card-tags span,
+.project-tags span {
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.is-inview .card-tags span,
+.is-inview .project-tags span {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.is-inview .card-tags span:nth-child(1),
+.is-inview .project-tags span:nth-child(1) { transition-delay: 0.1s; }
+.is-inview .card-tags span:nth-child(2),
+.is-inview .project-tags span:nth-child(2) { transition-delay: 0.15s; }
+.is-inview .card-tags span:nth-child(3),
+.is-inview .project-tags span:nth-child(3) { transition-delay: 0.2s; }
+.is-inview .card-tags span:nth-child(4),
+.is-inview .project-tags span:nth-child(4) { transition-delay: 0.25s; }
+
+/* Orbit tags with enhanced animation */
+.orbit-tag {
+    animation: orbitFloat 3s ease-in-out infinite;
+    animation-delay: calc(var(--delay) * 0.2s);
+}
+
+@keyframes orbitFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+/* Section transition parallax */
+.section-transition[data-string-parallax] svg {
+    transition: transform 0.3s ease-out;
+}
+
+/* Hero badge animation enhancement */
+.hero-badge[data-string-progress].is-inview {
+    animation: badgePop 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes badgePop {
+    0% {
+        opacity: 0;
+        transform: translateY(20px) scale(0.8);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Scroll indicator with progress */
+.scroll-indicator[data-string-progress].is-inview {
+    animation: fadeInUp 0.8s ease forwards;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Floating badge with glide */
+.floating-badge[data-string-glide] {
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.floating-badge[data-string-glide]:hover {
+    transform: scale(1.1);
+}
+
+/* Form wrapper with glide */
+.contact-form-wrapper[data-string-glide] {
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Footer brand magnetic */
+.footer-brand[data-string-magnetic] {
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Hide default cursor on desktop when StringTune cursor is active */
+@media (pointer: fine) {
+    body:has(.string-cursor) {
+        cursor: none;
+    }
+
+    body:has(.string-cursor) a,
+    body:has(.string-cursor) button,
+    body:has(.string-cursor) [data-string-magnetic] {
+        cursor: none;
+    }
+}
+
+/* Mobile - disable cursor effects */
+@media (max-width: 768px) {
+    .string-cursor {
+        display: none;
+    }
+
+    [data-string-magnetic] {
+        transform: none !important;
+    }
+}
+
+/* Performance optimization for parallax */
+@media (prefers-reduced-motion: reduce) {
+    [data-string-parallax],
+    [data-string-glide],
+    [data-string-magnetic] {
+        transform: none !important;
+        transition: none !important;
+    }
+
+    [data-string-split] .char,
+    [data-string-split] .word,
+    [data-string-split] .line {
+        opacity: 1;
+        transform: none;
+    }
+
+    .string-cursor {
+        display: none;
+    }
+}
