@@ -2878,17 +2878,28 @@ body:hover .cursor-outline {
    Awwwards-quality effects
    ========================================== */
 
-/* StringTune Smooth Scroll Override */
-html.has-scroll-smooth {
-    overflow: hidden;
+/* StringTune Smooth Scroll Override - Desktop Only */
+@media (min-width: 769px) and (pointer: fine) {
+    html.has-scroll-smooth {
+        overflow: hidden;
+    }
+
+    html.has-scroll-smooth body {
+        overflow: hidden;
+    }
 }
 
-html.has-scroll-smooth body {
-    overflow: hidden;
-}
+/* Never hide overflow on mobile - allows native scrolling */
+@media (max-width: 768px) {
+    html, body {
+        overflow-x: hidden;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
 
-[data-string-smooth-scroll] {
-    overflow: hidden;
+    [data-string-smooth-scroll] {
+        overflow: visible !important;
+    }
 }
 
 /* StringTune Custom Cursor */
@@ -3321,13 +3332,44 @@ button:hover ~ .string-cursor .cursor-outline,
     }
 }
 
-/* Mobile - disable cursor effects */
+/* Mobile - disable cursor effects and fix scrolling */
 @media (max-width: 768px) {
     .string-cursor {
         display: none;
     }
 
     [data-string-magnetic] {
+        transform: none !important;
+    }
+
+    /* Disable parallax transforms on mobile for performance */
+    [data-string-parallax] {
+        transform: none !important;
+    }
+
+    /* Disable glide on mobile */
+    [data-string-glide] {
+        transform: none !important;
+    }
+
+    /* Ensure progress elements are visible on mobile */
+    [data-string-progress] {
+        opacity: 1 !important;
+        transform: none !important;
+    }
+
+    /* Ensure split text is visible */
+    [data-string-split] .char,
+    [data-string-split] .word,
+    [data-string-split] .line {
+        opacity: 1 !important;
+        transform: none !important;
+    }
+
+    /* Fix any fixed positioning issues */
+    .section-bg,
+    .bg-image {
+        position: absolute !important;
         transform: none !important;
     }
 }

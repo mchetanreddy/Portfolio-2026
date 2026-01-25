@@ -64,8 +64,16 @@
             document.documentElement.style.scrollBehavior = 'smooth';
         }
 
+        // Check if mobile device
+        isMobile() {
+            return window.innerWidth < 768 || 'ontouchstart' in window;
+        }
+
         // Custom Parallax Implementation
         initParallax() {
+            // Disable parallax on mobile for performance and scroll issues
+            if (this.isMobile()) return;
+
             const parallaxElements = document.querySelectorAll('[data-string-parallax]');
             if (!parallaxElements.length) return;
 
@@ -95,7 +103,7 @@
 
         // Magnetic Effect Implementation
         initMagnetic() {
-            if (window.innerWidth < 768) return;
+            if (this.isMobile()) return;
 
             const magneticElements = document.querySelectorAll('[data-string-magnetic]');
 
@@ -125,6 +133,14 @@
         // Split Text Animation
         initSplitText() {
             const splitElements = document.querySelectorAll('[data-string-split]');
+
+            // On mobile, skip split animation for better performance and show text immediately
+            if (this.isMobile()) {
+                splitElements.forEach(el => {
+                    el.classList.add('split-ready', 'split-animated');
+                });
+                return;
+            }
 
             splitElements.forEach(el => {
                 const splitType = el.dataset.stringSplit;
@@ -171,6 +187,15 @@
         initProgress() {
             const progressElements = document.querySelectorAll('[data-string-progress]');
 
+            // On mobile, immediately show all elements for better performance
+            if (this.isMobile()) {
+                progressElements.forEach(el => {
+                    el.classList.add('is-inview');
+                    el.style.setProperty('--progress', 1);
+                });
+                return;
+            }
+
             const observer = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
@@ -194,6 +219,9 @@
 
         // Glide/Inertia Effect
         initGlide() {
+            // Disable glide on mobile for performance
+            if (this.isMobile()) return;
+
             const glideElements = document.querySelectorAll('[data-string-glide]');
 
             glideElements.forEach(el => {
@@ -224,7 +252,7 @@
 
         // Custom Cursor
         initCursor() {
-            if (window.innerWidth < 768) return;
+            if (this.isMobile()) return;
 
             const cursorDot = document.querySelector('[data-string-cursor-dot]');
             const cursorOutline = document.querySelector('[data-string-cursor-outline]');
