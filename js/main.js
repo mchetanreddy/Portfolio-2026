@@ -43,7 +43,7 @@
                     });
 
                     this.isReady = true;
-                    console.log('%c✨ StringTune Initialized', 'color: #00ff88; font-weight: bold;');
+                    console.log('%c✨ StringTune Initialized', 'color: #f59e0b; font-weight: bold;');
                 }
             } catch (e) {
                 console.log('StringTune modules will use fallback implementations');
@@ -794,7 +794,7 @@
                     vx: (Math.random() - 0.5) * 0.5,
                     vy: (Math.random() - 0.5) * 0.5,
                     radius: Math.random() * 2 + 1,
-                    color: `rgba(37, 99, 235, ${Math.random() * 0.4 + 0.15})`
+                    color: `rgba(217, 119, 6, ${Math.random() * 0.4 + 0.15})`
                 });
             }
         }
@@ -841,7 +841,7 @@
                         this.ctx.beginPath();
                         this.ctx.moveTo(particle.x, particle.y);
                         this.ctx.lineTo(other.x, other.y);
-                        this.ctx.strokeStyle = `rgba(37, 99, 235, ${0.12 * (1 - distance / 150)})`;
+                        this.ctx.strokeStyle = `rgba(217, 119, 6, ${0.12 * (1 - distance / 150)})`;
                         this.ctx.lineWidth = 0.5;
                         this.ctx.stroke();
                     }
@@ -931,7 +931,7 @@
                 this.ctx.beginPath();
                 this.ctx.moveTo(from.x, from.y);
                 this.ctx.lineTo(to.x, to.y);
-                this.ctx.strokeStyle = `rgba(37, 99, 235, ${alpha})`;
+                this.ctx.strokeStyle = `rgba(217, 119, 6, ${alpha})`;
                 this.ctx.lineWidth = 1;
                 this.ctx.stroke();
             });
@@ -943,13 +943,13 @@
 
                 this.ctx.beginPath();
                 this.ctx.arc(node.x, node.y, node.radius * pulseSize, 0, Math.PI * 2);
-                this.ctx.fillStyle = 'rgba(37, 99, 235, 0.5)';
+                this.ctx.fillStyle = 'rgba(217, 119, 6, 0.5)';
                 this.ctx.fill();
 
                 // Glow
                 this.ctx.beginPath();
                 this.ctx.arc(node.x, node.y, node.radius * pulseSize * 2, 0, Math.PI * 2);
-                this.ctx.fillStyle = 'rgba(37, 99, 235, 0.08)';
+                this.ctx.fillStyle = 'rgba(217, 119, 6, 0.08)';
                 this.ctx.fill();
             });
 
@@ -1081,7 +1081,7 @@
             }
         });
 
-        console.log('%c🚀 StringTune Enhanced Portfolio Loaded!', 'color: #00ff88; font-size: 16px; font-weight: bold;');
+        console.log('%c🚀 StringTune Enhanced Portfolio Loaded!', 'color: #f59e0b; font-size: 16px; font-weight: bold;');
         console.log('%c✨ Powered by StringTune effects', 'color: #00d4ff; font-size: 12px;');
         console.log('%c🎵 Click the sound icon to enable audio experience', 'color: #ff00aa; font-size: 12px;');
     });

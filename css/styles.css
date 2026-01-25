@@ -1,38 +1,38 @@
 /* ==========================================
-   CHETAN REDDY PORTFOLIO - MINIMALIST STYLES
-   Clean, Modern Portfolio Design
+   CHETAN REDDY PORTFOLIO - PROFESSIONAL YELLOW
+   Warm, Professional Portfolio Design
    ========================================== */
 
 /* CSS Custom Properties */
 :root {
-    /* Colors - Minimalist Light Theme */
-    --color-bg: #fafafa;
-    --color-bg-secondary: #f5f5f5;
-    --color-bg-tertiary: #eeeeee;
+    /* Colors - Professional Yellow Theme */
+    --color-bg: #fffdf7;
+    --color-bg-secondary: #fef9ed;
+    --color-bg-tertiary: #fef3d6;
     --color-surface: #ffffff;
-    --color-surface-light: #f8f9fa;
+    --color-surface-light: #fffef9;
 
-    --color-border: rgba(0, 0, 0, 0.08);
-    --color-border-hover: rgba(0, 0, 0, 0.15);
+    --color-border: rgba(120, 90, 40, 0.12);
+    --color-border-hover: rgba(120, 90, 40, 0.25);
 
-    --color-text: #1a1a1a;
-    --color-text-secondary: #555555;
-    --color-text-muted: #888888;
+    --color-text: #1c1917;
+    --color-text-secondary: #44403c;
+    --color-text-muted: #78716c;
 
-    /* Refined Accents */
-    --color-primary: #2563eb;
-    --color-primary-rgb: 37, 99, 235;
-    --color-secondary: #0891b2;
-    --color-secondary-rgb: 8, 145, 178;
-    --color-accent: #7c3aed;
-    --color-accent-rgb: 124, 58, 237;
-    --color-warning: #f59e0b;
+    /* Professional Yellow Palette */
+    --color-primary: #d97706;
+    --color-primary-rgb: 217, 119, 6;
+    --color-secondary: #1e293b;
+    --color-secondary-rgb: 30, 41, 59;
+    --color-accent: #ea580c;
+    --color-accent-rgb: 234, 88, 12;
+    --color-warning: #dc2626;
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
-    --gradient-accent: linear-gradient(135deg, var(--color-accent) 0%, var(--color-primary) 100%);
-    --gradient-dark: linear-gradient(180deg, #1a1a1a 0%, #2d2d2d 100%);
-    --gradient-radial: radial-gradient(circle at center, rgba(var(--color-primary-rgb), 0.08) 0%, transparent 70%);
+    --gradient-primary: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    --gradient-accent: linear-gradient(135deg, #ea580c 0%, #f59e0b 100%);
+    --gradient-dark: linear-gradient(180deg, #1e293b 0%, #334155 100%);
+    --gradient-radial: radial-gradient(circle at center, rgba(var(--color-primary-rgb), 0.1) 0%, transparent 70%);
     --gradient-subtle: linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-secondary) 100%);
 
     /* Typography */
