@@ -1,96 +1,291 @@
 /**
- * CHETAN REDDY PORTFOLIO - MAIN JAVASCRIPT
- * Handles animations, parallax, smooth scrolling, and interactions
+ * CHETAN REDDY PORTFOLIO - IMMERSIVE EXPERIENCE
+ * Advanced interactions, scroll-based audio, and creative effects
  */
 
 (function() {
     'use strict';
 
     // ==========================================
-    // UTILITY FUNCTIONS
+    // AUDIO MANAGER - Scroll-Based Sounds
     // ==========================================
-
-    const debounce = (func, wait = 10) => {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    };
-
-    const throttle = (func, limit = 100) => {
-        let inThrottle;
-        return function(...args) {
-            if (!inThrottle) {
-                func.apply(this, args);
-                inThrottle = true;
-                setTimeout(() => inThrottle = false, limit);
-            }
-        };
-    };
-
-    // ==========================================
-    // CURSOR FOLLOWER
-    // ==========================================
-
-    class CursorFollower {
+    class AudioManager {
         constructor() {
-            this.cursor = document.querySelector('.cursor-follower');
-            if (!this.cursor) return;
+            this.audioContext = null;
+            this.isMuted = true;
+            this.currentSection = 'hero';
+            this.oscillators = {};
+            this.gainNodes = {};
+            this.masterGain = null;
+            this.isInitialized = false;
 
-            this.pos = { x: 0, y: 0 };
-            this.mouse = { x: 0, y: 0 };
-            this.speed = 0.15;
+            this.sectionSounds = {
+                hero: { frequency: 110, type: 'sine', volume: 0.1 },
+                about: { frequency: 130.81, type: 'sine', volume: 0.08 },
+                skills: { frequency: 164.81, type: 'triangle', volume: 0.1 },
+                services: { frequency: 196, type: 'sine', volume: 0.08 },
+                experience: { frequency: 220, type: 'sine', volume: 0.1 },
+                projects: { frequency: 261.63, type: 'triangle', volume: 0.1 },
+                contact: { frequency: 293.66, type: 'sine', volume: 0.08 }
+            };
 
             this.init();
         }
 
         init() {
-            document.addEventListener('mousemove', (e) => {
-                this.mouse.x = e.clientX;
-                this.mouse.y = e.clientY;
-                this.cursor.classList.add('active');
-            });
+            const audioToggle = document.getElementById('audioToggle');
+            const audioController = document.getElementById('audioController');
 
-            document.addEventListener('mouseleave', () => {
-                this.cursor.classList.remove('active');
-            });
+            if (audioToggle && audioController) {
+                audioToggle.addEventListener('click', () => {
+                    if (!this.isInitialized) {
+                        this.initializeAudio();
+                    }
+                    this.toggleMute();
+                    audioController.classList.toggle('muted', this.isMuted);
+                });
+            }
 
-            // Add hover effect for interactive elements
-            const interactiveElements = document.querySelectorAll('a, button, .skill-tag, .service-card, .project-card');
-            interactiveElements.forEach(el => {
-                el.addEventListener('mouseenter', () => this.cursor.classList.add('hover'));
-                el.addEventListener('mouseleave', () => this.cursor.classList.remove('hover'));
-            });
-
-            this.render();
+            // Initialize on first user interaction
+            document.addEventListener('click', () => {
+                if (!this.isInitialized) {
+                    this.initializeAudio();
+                }
+            }, { once: true });
         }
 
-        render() {
-            this.pos.x += (this.mouse.x - this.pos.x) * this.speed;
-            this.pos.y += (this.mouse.y - this.pos.y) * this.speed;
+        initializeAudio() {
+            try {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                this.masterGain = this.audioContext.createGain();
+                this.masterGain.connect(this.audioContext.destination);
+                this.masterGain.gain.value = 0;
 
-            this.cursor.style.left = `${this.pos.x}px`;
-            this.cursor.style.top = `${this.pos.y}px`;
+                // Create ambient drone
+                this.createAmbientSound();
+                this.isInitialized = true;
+            } catch (e) {
+                console.log('Web Audio API not supported');
+            }
+        }
 
-            requestAnimationFrame(() => this.render());
+        createAmbientSound() {
+            if (!this.audioContext) return;
+
+            // Base drone
+            const osc1 = this.audioContext.createOscillator();
+            const gain1 = this.audioContext.createGain();
+            osc1.type = 'sine';
+            osc1.frequency.value = 55; // A1
+            gain1.gain.value = 0.05;
+            osc1.connect(gain1);
+            gain1.connect(this.masterGain);
+            osc1.start();
+
+            // Harmonic
+            const osc2 = this.audioContext.createOscillator();
+            const gain2 = this.audioContext.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.value = 82.41; // E2
+            gain2.gain.value = 0.03;
+            osc2.connect(gain2);
+            gain2.connect(this.masterGain);
+            osc2.start();
+
+            this.oscillators.base = osc1;
+            this.oscillators.harmonic = osc2;
+            this.gainNodes.base = gain1;
+            this.gainNodes.harmonic = gain2;
+        }
+
+        changeSection(sectionId) {
+            if (!this.audioContext || this.isMuted || this.currentSection === sectionId) return;
+
+            this.currentSection = sectionId;
+            const soundConfig = this.sectionSounds[sectionId];
+
+            if (soundConfig && this.oscillators.base) {
+                // Smoothly transition frequency
+                const now = this.audioContext.currentTime;
+                this.oscillators.base.frequency.linearRampToValueAtTime(
+                    soundConfig.frequency / 2,
+                    now + 0.5
+                );
+                this.oscillators.harmonic.frequency.linearRampToValueAtTime(
+                    soundConfig.frequency * 0.75,
+                    now + 0.5
+                );
+
+                // Play transition sound
+                this.playTransitionSound(soundConfig.frequency);
+            }
+        }
+
+        playTransitionSound(freq) {
+            if (!this.audioContext || this.isMuted) return;
+
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            gain.gain.value = 0;
+
+            osc.connect(gain);
+            gain.connect(this.masterGain);
+
+            const now = this.audioContext.currentTime;
+            gain.gain.linearRampToValueAtTime(0.05, now + 0.1);
+            gain.gain.linearRampToValueAtTime(0, now + 0.5);
+
+            osc.start(now);
+            osc.stop(now + 0.6);
+        }
+
+        toggleMute() {
+            this.isMuted = !this.isMuted;
+
+            if (this.masterGain) {
+                const now = this.audioContext.currentTime;
+                this.masterGain.gain.linearRampToValueAtTime(
+                    this.isMuted ? 0 : 0.3,
+                    now + 0.3
+                );
+            }
+        }
+
+        playClickSound() {
+            if (!this.audioContext || this.isMuted) return;
+
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+
+            osc.type = 'square';
+            osc.frequency.value = 800;
+            gain.gain.value = 0.02;
+
+            osc.connect(gain);
+            gain.connect(this.masterGain);
+
+            const now = this.audioContext.currentTime;
+            osc.start(now);
+            gain.gain.linearRampToValueAtTime(0, now + 0.05);
+            osc.stop(now + 0.05);
+        }
+    }
+
+    // ==========================================
+    // PRELOADER
+    // ==========================================
+    class Preloader {
+        constructor() {
+            this.preloader = document.getElementById('preloader');
+            this.init();
+        }
+
+        init() {
+            window.addEventListener('load', () => {
+                setTimeout(() => {
+                    if (this.preloader) {
+                        this.preloader.classList.add('hidden');
+                        document.body.classList.remove('loading');
+                    }
+                    // Trigger hero animations
+                    this.triggerHeroAnimations();
+                }, 1500);
+            });
+
+            document.body.classList.add('loading');
+        }
+
+        triggerHeroAnimations() {
+            const heroElements = document.querySelectorAll('.hero .reveal-up, .hero .reveal-left, .hero .reveal-right');
+            heroElements.forEach((el, index) => {
+                setTimeout(() => {
+                    el.classList.add('revealed');
+                }, index * 100);
+            });
+        }
+    }
+
+    // ==========================================
+    // CUSTOM CURSOR
+    // ==========================================
+    class CustomCursor {
+        constructor() {
+            this.dot = document.getElementById('cursorDot');
+            this.outline = document.getElementById('cursorOutline');
+
+            if (!this.dot || !this.outline || window.innerWidth < 768) return;
+
+            this.cursorPos = { x: 0, y: 0 };
+            this.outlinePos = { x: 0, y: 0 };
+            this.init();
+        }
+
+        init() {
+            document.addEventListener('mousemove', (e) => {
+                this.cursorPos.x = e.clientX;
+                this.cursorPos.y = e.clientY;
+
+                this.dot.style.left = `${e.clientX}px`;
+                this.dot.style.top = `${e.clientY}px`;
+            });
+
+            // Smooth outline following
+            this.animateOutline();
+
+            // Hover effects
+            const interactiveElements = document.querySelectorAll('a, button, .service-card, .project-card, .skill-orb, input, textarea');
+            interactiveElements.forEach(el => {
+                el.addEventListener('mouseenter', () => this.outline.classList.add('hover'));
+                el.addEventListener('mouseleave', () => this.outline.classList.remove('hover'));
+            });
+        }
+
+        animateOutline() {
+            this.outlinePos.x += (this.cursorPos.x - this.outlinePos.x) * 0.15;
+            this.outlinePos.y += (this.cursorPos.y - this.outlinePos.y) * 0.15;
+
+            this.outline.style.left = `${this.outlinePos.x}px`;
+            this.outline.style.top = `${this.outlinePos.y}px`;
+
+            requestAnimationFrame(() => this.animateOutline());
+        }
+    }
+
+    // ==========================================
+    // SCROLL PROGRESS
+    // ==========================================
+    class ScrollProgress {
+        constructor() {
+            this.progressBar = document.getElementById('scrollProgress');
+            if (!this.progressBar) return;
+
+            this.init();
+        }
+
+        init() {
+            window.addEventListener('scroll', () => this.updateProgress());
+        }
+
+        updateProgress() {
+            const scrollTop = window.pageYOffset;
+            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const progress = scrollTop / docHeight;
+
+            this.progressBar.style.transform = `scaleX(${progress})`;
         }
     }
 
     // ==========================================
     // NAVBAR
     // ==========================================
-
     class Navbar {
         constructor() {
             this.navbar = document.getElementById('navbar');
             this.navToggle = document.getElementById('navToggle');
             this.navMenu = document.getElementById('navMenu');
-            this.navLinks = document.querySelectorAll('.nav-link');
 
             if (!this.navbar) return;
 
@@ -98,44 +293,38 @@
         }
 
         init() {
-            // Scroll effect
-            window.addEventListener('scroll', throttle(() => this.onScroll(), 50));
+            window.addEventListener('scroll', () => this.onScroll());
 
-            // Mobile toggle
             if (this.navToggle) {
-                this.navToggle.addEventListener('click', () => this.toggleMobileMenu());
+                this.navToggle.addEventListener('click', () => this.toggleMobile());
             }
 
-            // Close mobile menu on link click
-            this.navLinks.forEach(link => {
-                link.addEventListener('click', () => this.closeMobileMenu());
+            // Close on link click
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', () => this.closeMobile());
             });
 
-            // Close mobile menu on outside click
+            // Close on outside click
             document.addEventListener('click', (e) => {
-                if (!this.navbar.contains(e.target) && this.navMenu.classList.contains('active')) {
-                    this.closeMobileMenu();
+                if (!this.navbar.contains(e.target) && this.navMenu?.classList.contains('active')) {
+                    this.closeMobile();
                 }
             });
         }
 
         onScroll() {
-            if (window.scrollY > 50) {
-                this.navbar.classList.add('scrolled');
-            } else {
-                this.navbar.classList.remove('scrolled');
-            }
+            this.navbar.classList.toggle('scrolled', window.scrollY > 50);
         }
 
-        toggleMobileMenu() {
-            this.navToggle.classList.toggle('active');
-            this.navMenu.classList.toggle('active');
-            document.body.style.overflow = this.navMenu.classList.contains('active') ? 'hidden' : '';
+        toggleMobile() {
+            this.navToggle?.classList.toggle('active');
+            this.navMenu?.classList.toggle('active');
+            document.body.style.overflow = this.navMenu?.classList.contains('active') ? 'hidden' : '';
         }
 
-        closeMobileMenu() {
-            this.navToggle.classList.remove('active');
-            this.navMenu.classList.remove('active');
+        closeMobile() {
+            this.navToggle?.classList.remove('active');
+            this.navMenu?.classList.remove('active');
             document.body.style.overflow = '';
         }
     }
@@ -143,7 +332,6 @@
     // ==========================================
     // SMOOTH SCROLL
     // ==========================================
-
     class SmoothScroll {
         constructor() {
             this.init();
@@ -175,16 +363,17 @@
     // ==========================================
     // REVEAL ON SCROLL
     // ==========================================
-
     class RevealOnScroll {
-        constructor() {
+        constructor(audioManager) {
+            this.audioManager = audioManager;
             this.elements = document.querySelectorAll('.reveal-up, .reveal-left, .reveal-right');
-            if (!this.elements.length) return;
+            this.sections = document.querySelectorAll('section[id]');
 
             this.init();
         }
 
         init() {
+            // Reveal elements
             const observerOptions = {
                 root: null,
                 rootMargin: '0px 0px -100px 0px',
@@ -201,131 +390,44 @@
             }, observerOptions);
 
             this.elements.forEach(el => observer.observe(el));
-        }
-    }
 
-    // ==========================================
-    // PARALLAX EFFECTS
-    // ==========================================
+            // Section observer for audio
+            const sectionObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting && entry.intersectionRatio > 0.3) {
+                        const sectionId = entry.target.id;
+                        this.audioManager?.changeSection(sectionId);
+                    }
+                });
+            }, { threshold: 0.3 });
 
-    class ParallaxEffect {
-        constructor() {
-            this.heroLayers = document.querySelectorAll('.hero-bg-layer');
-            this.parallaxBgs = document.querySelectorAll('.parallax-bg');
+            this.sections.forEach(section => sectionObserver.observe(section));
 
-            if (!this.heroLayers.length && !this.parallaxBgs.length) return;
+            // Meter items
+            const meterObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('revealed');
+                    }
+                });
+            }, { threshold: 0.5 });
 
-            this.init();
-        }
-
-        init() {
-            window.addEventListener('scroll', throttle(() => this.onScroll(), 16));
-            window.addEventListener('mousemove', throttle((e) => this.onMouseMove(e), 50));
-        }
-
-        onScroll() {
-            const scrolled = window.pageYOffset;
-
-            // Hero parallax layers
-            this.heroLayers.forEach((layer, index) => {
-                const speed = 0.2 + (index * 0.1);
-                const yPos = scrolled * speed;
-                layer.style.transform = `translateY(${yPos}px)`;
+            document.querySelectorAll('.meter-item').forEach(item => {
+                meterObserver.observe(item);
             });
-
-            // Section parallax backgrounds
-            this.parallaxBgs.forEach(bg => {
-                const section = bg.parentElement;
-                const sectionTop = section.offsetTop;
-                const sectionHeight = section.offsetHeight;
-
-                if (scrolled + window.innerHeight > sectionTop && scrolled < sectionTop + sectionHeight) {
-                    const progress = (scrolled - sectionTop + window.innerHeight) / (sectionHeight + window.innerHeight);
-                    const yPos = (progress - 0.5) * 100;
-                    bg.style.transform = `translateY(${yPos}px)`;
-                }
-            });
-        }
-
-        onMouseMove(e) {
-            if (window.innerWidth < 768) return;
-
-            const mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
-            const mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
-
-            this.heroLayers.forEach((layer, index) => {
-                const speed = 10 + (index * 5);
-                const x = mouseX * speed;
-                const y = mouseY * speed;
-                layer.style.transform = `translate(${x}px, ${y}px)`;
-            });
-        }
-    }
-
-    // ==========================================
-    // PARTICLE SYSTEM
-    // ==========================================
-
-    class ParticleSystem {
-        constructor() {
-            this.container = document.getElementById('particles');
-            if (!this.container) return;
-
-            this.particleCount = window.innerWidth < 768 ? 20 : 50;
-            this.init();
-        }
-
-        init() {
-            for (let i = 0; i < this.particleCount; i++) {
-                this.createParticle();
-            }
-        }
-
-        createParticle() {
-            const particle = document.createElement('div');
-            particle.classList.add('particle');
-
-            // Random properties
-            const size = Math.random() * 4 + 2;
-            const x = Math.random() * 100;
-            const y = Math.random() * 100;
-            const delay = Math.random() * 20;
-            const duration = Math.random() * 20 + 20;
-            const opacity = Math.random() * 0.4 + 0.1;
-
-            particle.style.cssText = `
-                width: ${size}px;
-                height: ${size}px;
-                left: ${x}%;
-                top: ${y}%;
-                animation-delay: -${delay}s;
-                animation-duration: ${duration}s;
-                opacity: ${opacity};
-            `;
-
-            this.container.appendChild(particle);
         }
     }
 
     // ==========================================
     // COUNTER ANIMATION
     // ==========================================
-
     class CounterAnimation {
         constructor() {
             this.counters = document.querySelectorAll('.stat-number');
-            if (!this.counters.length) return;
-
             this.init();
         }
 
         init() {
-            const observerOptions = {
-                root: null,
-                rootMargin: '0px',
-                threshold: 0.5
-            };
-
             const observer = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
@@ -333,7 +435,7 @@
                         observer.unobserve(entry.target);
                     }
                 });
-            }, observerOptions);
+            }, { threshold: 0.5 });
 
             this.counters.forEach(counter => observer.observe(counter));
         }
@@ -341,38 +443,47 @@
         animateCounter(element) {
             const target = parseInt(element.dataset.count, 10);
             const duration = 2000;
-            const step = target / (duration / 16);
-            let current = 0;
+            const startTime = performance.now();
 
-            const timer = setInterval(() => {
-                current += step;
-                if (current >= target) {
-                    element.textContent = target;
-                    clearInterval(timer);
+            const animate = (currentTime) => {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+
+                // Easing function
+                const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+                const current = Math.floor(easeOutQuart * target);
+
+                element.textContent = current;
+
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
                 } else {
-                    element.textContent = Math.floor(current);
+                    element.textContent = target;
                 }
-            }, 16);
+            };
+
+            requestAnimationFrame(animate);
         }
     }
 
     // ==========================================
-    // TYPED TEXT EFFECT
+    // TYPEWRITER EFFECT
     // ==========================================
-
-    class TypedText {
-        constructor(element, words, options = {}) {
-            this.element = element;
-            this.words = words;
-            this.options = {
-                typeSpeed: 100,
-                deleteSpeed: 50,
-                delayBetweenWords: 2000,
-                ...options
-            };
-            this.wordIndex = 0;
+    class Typewriter {
+        constructor() {
+            this.element = document.getElementById('typewriter');
+            this.phrases = [
+                'Building intelligent AI Agents & RAG systems',
+                'Crafting scalable Full Stack applications',
+                'Architecting cloud-native solutions',
+                'Transforming ideas into production-ready code'
+            ];
+            this.phraseIndex = 0;
             this.charIndex = 0;
             this.isDeleting = false;
+            this.typeSpeed = 50;
+            this.deleteSpeed = 30;
+            this.pauseDuration = 2000;
 
             if (this.element) {
                 this.type();
@@ -380,35 +491,240 @@
         }
 
         type() {
-            const currentWord = this.words[this.wordIndex];
+            const currentPhrase = this.phrases[this.phraseIndex];
 
             if (this.isDeleting) {
-                this.element.textContent = currentWord.substring(0, this.charIndex - 1);
+                this.element.textContent = currentPhrase.substring(0, this.charIndex - 1);
                 this.charIndex--;
             } else {
-                this.element.textContent = currentWord.substring(0, this.charIndex + 1);
+                this.element.textContent = currentPhrase.substring(0, this.charIndex + 1);
                 this.charIndex++;
             }
 
-            let typeSpeed = this.isDeleting ? this.options.deleteSpeed : this.options.typeSpeed;
+            let delay = this.isDeleting ? this.deleteSpeed : this.typeSpeed;
 
-            if (!this.isDeleting && this.charIndex === currentWord.length) {
-                typeSpeed = this.options.delayBetweenWords;
+            if (!this.isDeleting && this.charIndex === currentPhrase.length) {
+                delay = this.pauseDuration;
                 this.isDeleting = true;
             } else if (this.isDeleting && this.charIndex === 0) {
                 this.isDeleting = false;
-                this.wordIndex = (this.wordIndex + 1) % this.words.length;
-                typeSpeed = 500;
+                this.phraseIndex = (this.phraseIndex + 1) % this.phrases.length;
+                delay = 500;
             }
 
-            setTimeout(() => this.type(), typeSpeed);
+            setTimeout(() => this.type(), delay);
+        }
+    }
+
+    // ==========================================
+    // HERO CANVAS - Particle Network
+    // ==========================================
+    class HeroCanvas {
+        constructor() {
+            this.canvas = document.getElementById('heroCanvas');
+            if (!this.canvas) return;
+
+            this.ctx = this.canvas.getContext('2d');
+            this.particles = [];
+            this.mouse = { x: null, y: null, radius: 150 };
+            this.particleCount = window.innerWidth < 768 ? 30 : 80;
+
+            this.init();
+        }
+
+        init() {
+            this.resize();
+            window.addEventListener('resize', () => this.resize());
+
+            document.addEventListener('mousemove', (e) => {
+                this.mouse.x = e.clientX;
+                this.mouse.y = e.clientY;
+            });
+
+            this.createParticles();
+            this.animate();
+        }
+
+        resize() {
+            this.canvas.width = window.innerWidth;
+            this.canvas.height = window.innerHeight;
+        }
+
+        createParticles() {
+            this.particles = [];
+            for (let i = 0; i < this.particleCount; i++) {
+                this.particles.push({
+                    x: Math.random() * this.canvas.width,
+                    y: Math.random() * this.canvas.height,
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: (Math.random() - 0.5) * 0.5,
+                    radius: Math.random() * 2 + 1,
+                    color: `rgba(0, 255, 136, ${Math.random() * 0.5 + 0.2})`
+                });
+            }
+        }
+
+        animate() {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+            this.particles.forEach((particle, i) => {
+                // Move particles
+                particle.x += particle.vx;
+                particle.y += particle.vy;
+
+                // Bounce off edges
+                if (particle.x < 0 || particle.x > this.canvas.width) particle.vx *= -1;
+                if (particle.y < 0 || particle.y > this.canvas.height) particle.vy *= -1;
+
+                // Mouse interaction
+                if (this.mouse.x && this.mouse.y) {
+                    const dx = this.mouse.x - particle.x;
+                    const dy = this.mouse.y - particle.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < this.mouse.radius) {
+                        const force = (this.mouse.radius - distance) / this.mouse.radius;
+                        particle.x -= dx * force * 0.02;
+                        particle.y -= dy * force * 0.02;
+                    }
+                }
+
+                // Draw particle
+                this.ctx.beginPath();
+                this.ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+                this.ctx.fillStyle = particle.color;
+                this.ctx.fill();
+
+                // Connect nearby particles
+                for (let j = i + 1; j < this.particles.length; j++) {
+                    const other = this.particles[j];
+                    const dx = particle.x - other.x;
+                    const dy = particle.y - other.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < 150) {
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(particle.x, particle.y);
+                        this.ctx.lineTo(other.x, other.y);
+                        this.ctx.strokeStyle = `rgba(0, 255, 136, ${0.15 * (1 - distance / 150)})`;
+                        this.ctx.lineWidth = 0.5;
+                        this.ctx.stroke();
+                    }
+                }
+            });
+
+            requestAnimationFrame(() => this.animate());
+        }
+    }
+
+    // ==========================================
+    // NEURAL NETWORK CANVAS
+    // ==========================================
+    class NeuralCanvas {
+        constructor() {
+            this.canvas = document.getElementById('neuralCanvas');
+            if (!this.canvas) return;
+
+            this.ctx = this.canvas.getContext('2d');
+            this.nodes = [];
+            this.connections = [];
+
+            this.init();
+        }
+
+        init() {
+            this.resize();
+            window.addEventListener('resize', () => this.resize());
+            this.createNetwork();
+            this.animate();
+        }
+
+        resize() {
+            const section = this.canvas.parentElement;
+            this.canvas.width = section.offsetWidth;
+            this.canvas.height = section.offsetHeight;
+            this.createNetwork();
+        }
+
+        createNetwork() {
+            this.nodes = [];
+            this.connections = [];
+
+            // Create nodes in layers
+            const layers = 5;
+            const nodesPerLayer = 6;
+
+            for (let l = 0; l < layers; l++) {
+                for (let n = 0; n < nodesPerLayer; n++) {
+                    this.nodes.push({
+                        x: (l + 1) * (this.canvas.width / (layers + 1)),
+                        y: (n + 1) * (this.canvas.height / (nodesPerLayer + 1)),
+                        radius: 4,
+                        pulse: Math.random() * Math.PI * 2
+                    });
+                }
+            }
+
+            // Create connections
+            for (let l = 0; l < layers - 1; l++) {
+                for (let n = 0; n < nodesPerLayer; n++) {
+                    const currentIndex = l * nodesPerLayer + n;
+                    for (let nextN = 0; nextN < nodesPerLayer; nextN++) {
+                        const nextIndex = (l + 1) * nodesPerLayer + nextN;
+                        if (Math.random() > 0.5) {
+                            this.connections.push({
+                                from: currentIndex,
+                                to: nextIndex,
+                                pulse: Math.random() * Math.PI * 2
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        animate() {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+            // Draw connections
+            this.connections.forEach(conn => {
+                const from = this.nodes[conn.from];
+                const to = this.nodes[conn.to];
+                conn.pulse += 0.02;
+
+                const alpha = 0.1 + 0.1 * Math.sin(conn.pulse);
+                this.ctx.beginPath();
+                this.ctx.moveTo(from.x, from.y);
+                this.ctx.lineTo(to.x, to.y);
+                this.ctx.strokeStyle = `rgba(0, 255, 136, ${alpha})`;
+                this.ctx.lineWidth = 1;
+                this.ctx.stroke();
+            });
+
+            // Draw nodes
+            this.nodes.forEach(node => {
+                node.pulse += 0.03;
+                const pulseSize = 1 + 0.3 * Math.sin(node.pulse);
+
+                this.ctx.beginPath();
+                this.ctx.arc(node.x, node.y, node.radius * pulseSize, 0, Math.PI * 2);
+                this.ctx.fillStyle = 'rgba(0, 255, 136, 0.6)';
+                this.ctx.fill();
+
+                // Glow
+                this.ctx.beginPath();
+                this.ctx.arc(node.x, node.y, node.radius * pulseSize * 2, 0, Math.PI * 2);
+                this.ctx.fillStyle = 'rgba(0, 255, 136, 0.1)';
+                this.ctx.fill();
+            });
+
+            requestAnimationFrame(() => this.animate());
         }
     }
 
     // ==========================================
     // CONTACT FORM
     // ==========================================
-
     class ContactForm {
         constructor() {
             this.form = document.getElementById('contactForm');
@@ -419,120 +735,33 @@
 
         init() {
             this.form.addEventListener('submit', (e) => this.handleSubmit(e));
-
-            // Add floating label effect
-            const inputs = this.form.querySelectorAll('input, textarea');
-            inputs.forEach(input => {
-                input.addEventListener('focus', () => this.onInputFocus(input));
-                input.addEventListener('blur', () => this.onInputBlur(input));
-            });
-        }
-
-        onInputFocus(input) {
-            input.parentElement.classList.add('focused');
-        }
-
-        onInputBlur(input) {
-            if (!input.value) {
-                input.parentElement.classList.remove('focused');
-            }
         }
 
         async handleSubmit(e) {
             e.preventDefault();
 
             const submitBtn = this.form.querySelector('button[type="submit"]');
-            const originalText = submitBtn.innerHTML;
+            submitBtn.classList.add('loading');
 
-            // Show loading state
-            submitBtn.innerHTML = `
-                <span>Sending...</span>
-                <svg class="spinner" width="20" height="20" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="30 70"/>
-                </svg>
-            `;
-            submitBtn.disabled = true;
-
-            // Simulate form submission (replace with actual API call)
+            // Simulate form submission
             await new Promise(resolve => setTimeout(resolve, 2000));
 
-            // Show success state
-            submitBtn.innerHTML = `
-                <span>Message Sent!</span>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="20 6 9 17 4 12"/>
-                </svg>
-            `;
+            submitBtn.classList.remove('loading');
 
-            // Reset form
-            setTimeout(() => {
-                this.form.reset();
-                submitBtn.innerHTML = originalText;
-                submitBtn.disabled = false;
-            }, 3000);
+            // Show success (you would integrate with actual form service)
+            alert('Message sent successfully! I\'ll get back to you soon.');
+            this.form.reset();
         }
     }
 
     // ==========================================
-    // MAGNETIC BUTTONS
+    // TILT EFFECT FOR CARDS
     // ==========================================
-
-    class MagneticButtons {
+    class TiltEffect {
         constructor() {
-            this.buttons = document.querySelectorAll('.btn-primary, .btn-secondary');
-            if (!this.buttons.length || window.innerWidth < 768) return;
+            if (window.innerWidth < 1024) return;
 
-            this.init();
-        }
-
-        init() {
-            this.buttons.forEach(button => {
-                button.addEventListener('mousemove', (e) => this.onMouseMove(e, button));
-                button.addEventListener('mouseleave', (e) => this.onMouseLeave(e, button));
-            });
-        }
-
-        onMouseMove(e, button) {
-            const rect = button.getBoundingClientRect();
-            const x = e.clientX - rect.left - rect.width / 2;
-            const y = e.clientY - rect.top - rect.height / 2;
-
-            button.style.transform = `translate(${x * 0.2}px, ${y * 0.2}px)`;
-        }
-
-        onMouseLeave(e, button) {
-            button.style.transform = '';
-        }
-    }
-
-    // ==========================================
-    // SKILL TAGS ANIMATION
-    // ==========================================
-
-    class SkillTagsAnimation {
-        constructor() {
-            this.tags = document.querySelectorAll('.skill-tag');
-            if (!this.tags.length) return;
-
-            this.init();
-        }
-
-        init() {
-            this.tags.forEach((tag, index) => {
-                tag.style.transitionDelay = `${index * 0.05}s`;
-            });
-        }
-    }
-
-    // ==========================================
-    // SERVICE CARD TILT
-    // ==========================================
-
-    class ServiceCardTilt {
-        constructor() {
-            this.cards = document.querySelectorAll('.service-card, .project-card:not(.large)');
-            if (!this.cards.length || window.innerWidth < 1024) return;
-
+            this.cards = document.querySelectorAll('[data-tilt]');
             this.init();
         }
 
@@ -554,7 +783,7 @@
             const rotateX = (y - centerY) / 20;
             const rotateY = (centerX - x) / 20;
 
-            card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-8px)`;
+            card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-10px)`;
         }
 
         onMouseLeave(e, card) {
@@ -563,21 +792,116 @@
     }
 
     // ==========================================
-    // ACTIVE NAV LINK
+    // PARALLAX BACKGROUNDS
     // ==========================================
-
-    class ActiveNavLink {
+    class ParallaxBackgrounds {
         constructor() {
-            this.sections = document.querySelectorAll('section[id]');
-            this.navLinks = document.querySelectorAll('.nav-link');
-
-            if (!this.sections.length || !this.navLinks.length) return;
+            this.bgImages = document.querySelectorAll('.bg-image');
+            if (!this.bgImages.length) return;
 
             this.init();
         }
 
         init() {
-            window.addEventListener('scroll', throttle(() => this.onScroll(), 100));
+            window.addEventListener('scroll', () => this.onScroll());
+        }
+
+        onScroll() {
+            const scrolled = window.pageYOffset;
+
+            this.bgImages.forEach(bg => {
+                const section = bg.closest('.section');
+                if (!section) return;
+
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.offsetHeight;
+
+                if (scrolled + window.innerHeight > sectionTop && scrolled < sectionTop + sectionHeight) {
+                    const progress = (scrolled - sectionTop + window.innerHeight) / (sectionHeight + window.innerHeight);
+                    const yPos = (progress - 0.5) * 50;
+                    bg.style.transform = `translateY(${yPos}px) scale(1.1)`;
+                }
+            });
+        }
+    }
+
+    // ==========================================
+    // MAGNETIC BUTTONS
+    // ==========================================
+    class MagneticButtons {
+        constructor() {
+            if (window.innerWidth < 768) return;
+
+            this.buttons = document.querySelectorAll('.btn-magnetic, .btn-primary');
+            this.init();
+        }
+
+        init() {
+            this.buttons.forEach(btn => {
+                btn.addEventListener('mousemove', (e) => this.onMouseMove(e, btn));
+                btn.addEventListener('mouseleave', (e) => this.onMouseLeave(e, btn));
+            });
+        }
+
+        onMouseMove(e, btn) {
+            const rect = btn.getBoundingClientRect();
+            const x = e.clientX - rect.left - rect.width / 2;
+            const y = e.clientY - rect.top - rect.height / 2;
+
+            btn.style.transform = `translate(${x * 0.2}px, ${y * 0.2}px)`;
+        }
+
+        onMouseLeave(e, btn) {
+            btn.style.transform = '';
+        }
+    }
+
+    // ==========================================
+    // TIMELINE PROGRESS
+    // ==========================================
+    class TimelineProgress {
+        constructor() {
+            this.track = document.getElementById('trackProgress');
+            this.timeline = document.querySelector('.timeline-3d');
+
+            if (!this.track || !this.timeline) return;
+
+            this.init();
+        }
+
+        init() {
+            window.addEventListener('scroll', () => this.updateProgress());
+        }
+
+        updateProgress() {
+            const rect = this.timeline.getBoundingClientRect();
+            const windowHeight = window.innerHeight;
+
+            if (rect.top < windowHeight && rect.bottom > 0) {
+                const totalHeight = rect.height;
+                const scrolled = windowHeight - rect.top;
+                const progress = Math.min(Math.max(scrolled / totalHeight, 0), 1);
+
+                this.track.style.height = `${progress * 100}%`;
+            }
+        }
+    }
+
+    // ==========================================
+    // ACTIVE NAV LINK
+    // ==========================================
+    class ActiveNavLink {
+        constructor() {
+            this.sections = document.querySelectorAll('section[id]');
+            this.navLinks = document.querySelectorAll('.nav-link');
+
+            if (!this.sections.length) return;
+
+            this.init();
+        }
+
+        init() {
+            window.addEventListener('scroll', () => this.onScroll());
         }
 
         onScroll() {
@@ -601,56 +925,74 @@
     }
 
     // ==========================================
-    // PRELOADER
+    // FLOATING SHAPES PARALLAX
     // ==========================================
-
-    class Preloader {
+    class FloatingShapesParallax {
         constructor() {
+            this.shapes = document.querySelectorAll('.floating-shape, .floating-orb');
+            if (!this.shapes.length) return;
+
             this.init();
         }
 
         init() {
-            // Add loaded class to body when page is ready
-            window.addEventListener('load', () => {
-                document.body.classList.add('loaded');
+            document.addEventListener('mousemove', (e) => this.onMouseMove(e));
+        }
 
-                // Trigger initial animations
-                setTimeout(() => {
-                    document.querySelectorAll('.hero .reveal-up, .hero .reveal-left, .hero .reveal-right').forEach(el => {
-                        el.classList.add('revealed');
-                    });
-                }, 100);
+        onMouseMove(e) {
+            const mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+            const mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+
+            this.shapes.forEach((shape, index) => {
+                const speed = 10 + (index * 5);
+                const x = mouseX * speed;
+                const y = mouseY * speed;
+                shape.style.transform = `translate(${x}px, ${y}px)`;
             });
         }
     }
 
     // ==========================================
-    // INITIALIZE ALL MODULES
+    // INITIALIZE EVERYTHING
     // ==========================================
-
     document.addEventListener('DOMContentLoaded', () => {
-        // Core functionality
+        // Core systems
+        const audioManager = new AudioManager();
         new Preloader();
+        new CustomCursor();
+        new ScrollProgress();
         new Navbar();
         new SmoothScroll();
-        new RevealOnScroll();
 
-        // Visual effects
-        new CursorFollower();
-        new ParallaxEffect();
-        new ParticleSystem();
+        // Animations
+        new RevealOnScroll(audioManager);
         new CounterAnimation();
+        new Typewriter();
 
-        // Interactive elements
+        // Canvas effects
+        new HeroCanvas();
+        new NeuralCanvas();
+
+        // Interactions
+        new TiltEffect();
+        new ParallaxBackgrounds();
         new MagneticButtons();
-        new SkillTagsAnimation();
-        new ServiceCardTilt();
+        new TimelineProgress();
         new ActiveNavLink();
+        new FloatingShapesParallax();
 
         // Form
         new ContactForm();
 
-        console.log('%c🚀 Portfolio loaded successfully!', 'color: #3dff17; font-size: 14px; font-weight: bold;');
+        // Click sound
+        document.addEventListener('click', (e) => {
+            if (e.target.matches('a, button')) {
+                audioManager.playClickSound();
+            }
+        });
+
+        console.log('%c🚀 Immersive Portfolio Loaded!', 'color: #00ff88; font-size: 16px; font-weight: bold;');
+        console.log('%c🎵 Click the sound icon to enable audio experience', 'color: #00d4ff; font-size: 12px;');
     });
 
 })();
