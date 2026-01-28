@@ -488,42 +488,61 @@
                 uniform float u_time;
                 uniform vec2 u_mouse;
 
-                #define ITR 130
-                #define FAR 5.0
+                #define STEPS 130
+                #define ALPHA_WEIGHT 0.015
+                #define BASE_STEP 0.025
 
-                mat2 mm2(float a) {
+                vec2 mo;
+
+                vec2 rot(vec2 p, float a) {
                     float c = cos(a), s = sin(a);
-                    return mat2(c, s, -s, c);
+                    return p * mat2(c, s, -s, c);
+                }
+
+                float hash21(vec2 n) {
+                    return fract(sin(dot(n, vec2(12.9898, 4.1414))) * 43758.5453);
                 }
 
                 // Procedural 3D noise (replacing iChannel0 texture)
-                float hash(vec3 p) {
+                float hash3(vec3 p) {
                     p = fract(p * vec3(443.897, 441.423, 437.195));
                     p += dot(p, p.yxz + 19.19);
                     return fract((p.x + p.y) * p.z);
                 }
 
-                float noise3D(vec3 p) {
-                    vec3 i = floor(p);
-                    vec3 f = fract(p);
-                    f = f * f * (3.0 - 2.0 * f);
+                float noise(vec3 p) {
+                    vec3 ip = floor(p);
+                    vec3 fp = fract(p);
+                    fp = fp * fp * (3.0 - 2.0 * fp);
 
-                    float n = mix(
-                        mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x),
-                            mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
-                        mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
-                            mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y),
-                        f.z);
-                    return n;
+                    float a = hash3(ip);
+                    float b = hash3(ip + vec3(1.0, 0.0, 0.0));
+                    float c = hash3(ip + vec3(0.0, 1.0, 0.0));
+                    float d = hash3(ip + vec3(1.0, 1.0, 0.0));
+                    float e = hash3(ip + vec3(0.0, 0.0, 1.0));
+                    float f = hash3(ip + vec3(1.0, 0.0, 1.0));
+                    float g = hash3(ip + vec3(0.0, 1.0, 1.0));
+                    float h = hash3(ip + vec3(1.0, 1.0, 1.0));
+
+                    float x1 = mix(a, b, fp.x);
+                    float x2 = mix(c, d, fp.x);
+                    float y1 = mix(x1, x2, fp.y);
+
+                    float x3 = mix(e, f, fp.x);
+                    float x4 = mix(g, h, fp.x);
+                    float y2 = mix(x3, x4, fp.y);
+
+                    return mix(y1, y2, fp.z);
                 }
 
-                float fbm(vec3 p) {
-                    float rz = 0.0;
-                    float a = 0.5;
+                float fbm(vec3 p, float sr, float tm) {
+                    p *= 3.5;
+                    float rz = 0.0, z = 1.0;
                     for(int i = 0; i < 4; i++) {
-                        rz += noise3D(p) * a;
-                        a *= 0.5;
-                        p *= 2.0;
+                        float n = noise(p - tm * 0.6);
+                        rz += (sin(n * 4.4) - 0.45) * z;
+                        z *= 0.47;
+                        p *= 3.5;
                     }
                     return rz;
                 }
@@ -531,59 +550,66 @@
                 vec4 map(vec3 p, float tm) {
                     float dtp = dot(p, p);
                     p = 0.5 * p / (dtp + 0.2);
-                    p.xz = p.xz * mm2(dtp * 0.7 + tm * 0.5);
-                    float r = fbm(p * 6.5 + sin(tm * 0.3));
-                    // Amber/golden color theme
-                    vec4 col = vec4(0.6, 0.35, 0.1, 0.96) * r;
-                    col *= smoothstep(0.0, 0.1, abs(dtp - 0.4));
+                    p.xz = rot(p.xz, p.y * 2.5);
+                    p.xy = rot(p.xz, p.y * 2.0);
+
+                    float dtp2 = dot(p, p);
+                    p = (mo.y + 0.6) * 3.0 * p / (dtp2 - 5.0);
+                    float r = clamp(fbm(p, dtp * 0.1, tm) * 1.5 - dtp * (0.35 - sin(tm * 0.3) * 0.15), 0.0, 1.0);
+
+                    // Amber/golden color theme (modified from original green)
+                    vec4 col = vec4(1.7, 0.8, 0.2, 0.96) * r;
+
+                    float grd = clamp((dtp + 0.7) * 0.4, 0.0, 1.0);
+                    col.b += grd * 0.3;
+                    col.r += grd * 0.2;
+
+                    vec3 lv = mix(p, vec3(0.3), 2.0);
+                    grd = clamp((col.w - fbm(p + lv * 0.05, 1.0, tm)) * 2.0, 0.01, 1.5);
+                    col.rgb *= vec3(0.6, 0.4, 0.2) * grd + vec3(2.0, 1.0, 0.3);
+                    col.a *= clamp(dtp * 2.0 - 1.0, 0.0, 1.0) * 0.07 + 0.87;
+
                     return col;
                 }
 
                 vec4 vmarch(vec3 ro, vec3 rd, float tm) {
                     vec4 rz = vec4(0.0);
-                    float t = 2.2;
-                    for(int i = 0; i < ITR; i++) {
-                        if(rz.a > 0.99 || t > FAR) break;
+                    float t = 2.5;
+                    t += 0.03 * hash21(gl_FragCoord.xy);
+                    for(int i = 0; i < STEPS; i++) {
+                        if(rz.a > 0.99 || t > 6.0) break;
                         vec3 pos = ro + t * rd;
                         vec4 col = map(pos, tm);
-                        col.a *= 0.3;
-                        col.rgb *= col.a;
-                        rz = rz + col * (1.0 - rz.a);
-                        t += 0.03;
+                        float den = col.a;
+                        col.a *= ALPHA_WEIGHT;
+                        col.rgb *= col.a * 1.7;
+                        rz += col * (1.0 - rz.a);
+                        t += BASE_STEP - den * (BASE_STEP - BASE_STEP * 0.015);
                     }
                     return rz;
                 }
 
                 void main() {
-                    vec2 p = gl_FragCoord.xy / u_resolution.xy - 0.5;
-                    p.x *= u_resolution.x / u_resolution.y;
-                    float tm = u_time * 0.3;
+                    float tm = u_time;
+                    vec2 p = gl_FragCoord.xy / u_resolution.xy * 2.0 - 1.0;
+                    p.x *= u_resolution.x / u_resolution.y * 0.85;
+                    p *= 1.1;
 
-                    // Camera setup with mouse interaction
-                    float md = u_mouse.x * 6.28318 - 3.14159;
-                    float md2 = (u_mouse.y - 0.5) * 3.14159;
-                    vec3 ro = vec3(0.0, 0.0, -3.0);
-                    vec3 rd = normalize(vec3(p, 0.7));
+                    mo = u_mouse;
+                    mo = (mo == vec2(0.0)) ? vec2(0.5, 1.0) : mo;
 
-                    mat2 mx = mm2(tm * 0.1 + md);
-                    mat2 my = mm2(tm * 0.05 + md2);
-                    ro.xz = ro.xz * mx;
-                    rd.xz = rd.xz * mx;
-                    ro.xy = ro.xy * my;
-                    rd.xy = rd.xy * my;
+                    vec3 ro = 4.0 * normalize(vec3(
+                        cos(2.75 - 2.0 * (mo.x + tm * 0.05)),
+                        sin(tm * 0.22) * 0.2,
+                        sin(2.75 - 2.0 * (mo.x + tm * 0.05))
+                    ));
+                    vec3 eye = normalize(vec3(0.0) - ro);
+                    vec3 rgt = normalize(cross(vec3(0.0, 1.0, 0.0), eye));
+                    vec3 up = cross(eye, rgt);
+                    vec3 rd = normalize(p.x * rgt + p.y * up + (3.3 - sin(tm * 0.3) * 0.7) * eye);
 
-                    vec4 col = vmarch(ro, rd, tm);
-
-                    // Color grading for amber theme
-                    col.rgb = pow(col.rgb, vec3(0.9, 0.85, 0.7));
-                    col.rgb *= vec3(1.2, 0.95, 0.7);
-
-                    // Add subtle glow
-                    col.rgb += vec3(0.15, 0.08, 0.02) * (1.0 - col.a);
-
-                    // Vignette
-                    vec2 uv = gl_FragCoord.xy / u_resolution.xy;
-                    col.rgb *= pow(16.0 * uv.x * uv.y * (1.0 - uv.x) * (1.0 - uv.y), 0.12);
+                    vec4 col = clamp(vmarch(ro, rd, tm), 0.0, 1.0);
+                    col.rgb = pow(col.rgb, vec3(0.9));
 
                     gl_FragColor = vec4(col.rgb, 1.0);
                 }
