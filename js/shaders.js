@@ -1,6 +1,6 @@
 /**
  * SHADERTOY-STYLE WEBGL EFFECTS
- * Abstract Geometric Tunnel with golden amber theme
+ * Fractal Art shader by Kishimisu with golden amber theme
  */
 
 (function() {
@@ -480,8 +480,51 @@
             `;
         }
 
+        // Fragment Shader: Fractal Art by Kishimisu (Golden Amber Theme)
+        getFractalShader() {
+            return `
+                precision highp float;
+                uniform vec2 u_resolution;
+                uniform float u_time;
+                uniform vec2 u_mouse;
+
+                // Golden amber palette based on IQ's palette technique
+                vec3 palette(float t) {
+                    vec3 a = vec3(0.5, 0.4, 0.2);
+                    vec3 b = vec3(0.5, 0.3, 0.2);
+                    vec3 c = vec3(1.0, 0.7, 0.4);
+                    vec3 d = vec3(0.1, 0.2, 0.3);
+                    return a + b * cos(6.28318 * (c * t + d));
+                }
+
+                void main() {
+                    vec2 uv = (gl_FragCoord.xy * 2.0 - u_resolution.xy) / u_resolution.y;
+                    vec2 uv0 = uv;
+                    vec3 finalColor = vec3(0.0);
+
+                    for (float i = 0.0; i < 4.0; i++) {
+                        uv = fract(uv * 1.5) - 0.5;
+
+                        float d = length(uv) * exp(-length(uv0));
+
+                        vec3 col = palette(length(uv0) + i * 0.4 + u_time * 0.4);
+
+                        d = sin(d * 8.0 + u_time) / 8.0;
+                        d = abs(d);
+
+                        d = pow(0.01 / d, 1.2);
+
+                        finalColor += col * d;
+                    }
+
+                    gl_FragColor = vec4(finalColor, 1.0);
+                }
+            `;
+        }
+
         setupShaders() {
             const shaders = {
+                fractal: this.getFractalShader(),
                 tunnel: this.getTunnelShader(),
                 simpleTunnel: this.getSimpleTunnelShader(),
                 electric: this.getElectricShader(),
@@ -511,8 +554,8 @@
                 -1, 1, 1, -1, 1, 1
             ]), this.gl.STATIC_DRAW);
 
-            // Default to tunnel shader
-            this.setProgram('tunnel');
+            // Default to fractal shader
+            this.setProgram('fractal');
         }
 
         createProgram(vertexSource, fragmentSource) {
@@ -674,11 +717,11 @@
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             window.sectionShaders = new SectionShaders();
-            console.log('%c🚀 Abstract Tunnel Shader Initialized', 'color: #f2a61f; font-size: 14px; font-weight: bold;');
+            console.log('%c🚀 Fractal Art Shader Initialized', 'color: #f2a61f; font-size: 14px; font-weight: bold;');
         });
     } else {
         window.sectionShaders = new SectionShaders();
-        console.log('%c🚀 Abstract Tunnel Shader Initialized', 'color: #f2a61f; font-size: 14px; font-weight: bold;');
+        console.log('%c🚀 Fractal Art Shader Initialized', 'color: #f2a61f; font-size: 14px; font-weight: bold;');
     }
 
 })();
