@@ -480,6 +480,116 @@
             `;
         }
 
+        // Magnetismic shader by nimitz (Golden Amber Theme)
+        getMagnetismicShader() {
+            return `
+                precision highp float;
+                uniform vec2 u_resolution;
+                uniform float u_time;
+                uniform vec2 u_mouse;
+
+                #define ITR 130
+                #define FAR 5.0
+                #define time u_time * 0.3
+
+                mat2 mm2(float a) {
+                    float c = cos(a), s = sin(a);
+                    return mat2(c, s, -s, c);
+                }
+
+                // Procedural 3D noise (replacing iChannel0 texture)
+                float hash(vec3 p) {
+                    p = fract(p * vec3(443.897, 441.423, 437.195));
+                    p += dot(p, p.yxz + 19.19);
+                    return fract((p.x + p.y) * p.z);
+                }
+
+                float noise3D(vec3 p) {
+                    vec3 i = floor(p);
+                    vec3 f = fract(p);
+                    f = f * f * (3.0 - 2.0 * f);
+
+                    float n = mix(
+                        mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x),
+                            mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+                        mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
+                            mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y),
+                        f.z);
+                    return n;
+                }
+
+                float fbm(vec3 p) {
+                    float rz = 0.0;
+                    float a = 0.5;
+                    for(int i = 0; i < 4; i++) {
+                        rz += noise3D(p) * a;
+                        a *= 0.5;
+                        p *= 2.0;
+                    }
+                    return rz;
+                }
+
+                vec4 map(vec3 p) {
+                    float dtp = dot(p, p);
+                    p = 0.5 * p / (dtp + 0.2);
+                    p.xz = p.xz * mm2(dtp * 0.7 + time * 0.5);
+                    float r = fbm(p * 6.5 + sin(time * 0.3));
+                    // Amber/golden color theme
+                    vec4 col = vec4(0.6, 0.35, 0.1, 0.96) * r;
+                    col *= smoothstep(0.0, 0.1, abs(dtp - 0.4));
+                    return col;
+                }
+
+                vec4 vmarch(vec3 ro, vec3 rd) {
+                    vec4 rz = vec4(0);
+                    float t = 2.2;
+                    for(int i = 0; i < ITR; i++) {
+                        if(rz.a > 0.99 || t > FAR) break;
+                        vec3 pos = ro + t * rd;
+                        vec4 col = map(pos);
+                        col.a *= 0.3;
+                        col.rgb *= col.a;
+                        rz = rz + col * (1.0 - rz.a);
+                        t += 0.03;
+                    }
+                    return rz;
+                }
+
+                void main() {
+                    vec2 p = gl_FragCoord.xy / u_resolution.xy - 0.5;
+                    p.x *= u_resolution.x / u_resolution.y;
+
+                    // Camera setup with mouse interaction
+                    float md = u_mouse.x * 6.28318 - 3.14159;
+                    float md2 = (u_mouse.y - 0.5) * 3.14159;
+                    vec3 ro = vec3(0.0, 0.0, -3.0);
+                    vec3 rd = normalize(vec3(p, 0.7));
+
+                    mat2 mx = mm2(time * 0.1 + md);
+                    mat2 my = mm2(time * 0.05 + md2);
+                    ro.xz = ro.xz * mx;
+                    rd.xz = rd.xz * mx;
+                    ro.xy = ro.xy * my;
+                    rd.xy = rd.xy * my;
+
+                    vec4 col = vmarch(ro, rd);
+
+                    // Color grading for amber theme
+                    col.rgb = pow(col.rgb, vec3(0.9, 0.85, 0.7));
+                    col.rgb *= vec3(1.2, 0.95, 0.7);
+
+                    // Add subtle glow
+                    col.rgb += vec3(0.15, 0.08, 0.02) * (1.0 - col.a);
+
+                    // Vignette
+                    vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+                    col.rgb *= pow(16.0 * uv.x * uv.y * (1.0 - uv.x) * (1.0 - uv.y), 0.12);
+
+                    gl_FragColor = vec4(col.rgb, 1.0);
+                }
+            `;
+        }
+
         // Fragment Shader: Fractal Art by Kishimisu (Golden Amber Theme)
         getFractalShader() {
             return `
@@ -525,6 +635,7 @@
         setupShaders() {
             const shaders = {
                 fractal: this.getFractalShader(),
+                magnetismic: this.getMagnetismicShader(),
                 tunnel: this.getTunnelShader(),
                 simpleTunnel: this.getSimpleTunnelShader(),
                 electric: this.getElectricShader(),
