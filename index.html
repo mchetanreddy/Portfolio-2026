@@ -75,11 +75,12 @@
     </nav>
 
     <!-- Hero Section -->
-    <section class="hero" id="hero" data-sound="ambient">
+    <section class="hero" id="hero" data-sound="ambient" data-shader="aurora">
         <!-- Animated Background -->
         <div class="hero-bg">
             <div class="gradient-bg"></div>
             <div class="mesh-gradient"></div>
+            <canvas class="shader-canvas" id="shaderCanvas"></canvas>
             <canvas class="hero-canvas" id="heroCanvas"></canvas>
             <div class="noise-overlay"></div>
             <div class="grid-overlay"></div>
@@ -199,7 +200,7 @@
     </section>
 
     <!-- About Section -->
-    <section class="section about" id="about" data-sound="deep">
+    <section class="section about" id="about" data-sound="deep" data-shader="fluid">
         <div class="section-bg">
             <div class="bg-image" style="background-image: url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1920&q=80');" data-string-parallax="0.3"></div>
             <div class="bg-overlay"></div>
@@ -323,7 +324,7 @@
     </section>
 
     <!-- Skills Section -->
-    <section class="section skills" id="skills" data-sound="tech">
+    <section class="section skills" id="skills" data-sound="tech" data-shader="particles">
         <div class="section-bg">
             <div class="bg-image" style="background-image: url('https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=1920&q=80');" data-string-parallax="0.25"></div>
             <div class="bg-overlay dark"></div>
@@ -492,7 +493,7 @@
     </section>
 
     <!-- Services Section -->
-    <section class="section services" id="services" data-sound="corporate">
+    <section class="section services" id="services" data-sound="corporate" data-shader="lightRays">
         <div class="section-bg">
             <div class="bg-image" style="background-image: url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=1920&q=80');" data-string-parallax="0.3"></div>
             <div class="bg-overlay gradient"></div>
@@ -659,7 +660,7 @@
     </section>
 
     <!-- Experience Section -->
-    <section class="section experience" id="experience" data-sound="journey">
+    <section class="section experience" id="experience" data-sound="journey" data-shader="aurora">
         <div class="section-bg">
             <div class="bg-image" style="background-image: url('https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=1920&q=80');" data-string-parallax="0.3"></div>
             <div class="bg-overlay dark"></div>
@@ -775,7 +776,7 @@
     </section>
 
     <!-- Projects Section -->
-    <section class="section projects" id="projects" data-sound="showcase">
+    <section class="section projects" id="projects" data-sound="showcase" data-shader="fluid">
         <div class="section-bg">
             <div class="bg-image" style="background-image: url('https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=1920&q=80');" data-string-parallax="0.3"></div>
             <div class="bg-overlay gradient-reverse"></div>
@@ -923,7 +924,7 @@
     </section>
 
     <!-- Contact Section -->
-    <section class="section contact" id="contact" data-sound="contact">
+    <section class="section contact" id="contact" data-sound="contact" data-shader="lightRays">
         <div class="section-bg">
             <div class="bg-image" style="background-image: url('https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?w=1920&q=80');" data-string-parallax="0.3"></div>
             <div class="bg-overlay dark"></div>
@@ -1095,6 +1096,9 @@
 
     <!-- StringTune Library -->
     <script src="https://cdn.jsdelivr.net/npm/@fiddle-digital/string-tune@latest/dist/string-tune.min.js"></script>
+
+    <!-- Shader Effects -->
+    <script src="js/shaders.js"></script>
 
     <!-- Main Scripts -->
     <script src="js/main.js"></script>

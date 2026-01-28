@@ -7,6 +7,7 @@
 :root {
     /* Colors - Professional Yellow Theme */
     --color-bg: #fffdf7;
+    --color-bg-rgb: 255, 253, 247;
     --color-bg-secondary: #fef9ed;
     --color-bg-tertiary: #fef3d6;
     --color-surface: #ffffff;
@@ -544,6 +545,21 @@ body:hover .cursor-outline {
     overflow: hidden;
 }
 
+/* Section overlay for shader visibility */
+.section:not(.hero)::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        180deg,
+        rgba(var(--color-bg-rgb), 0.88) 0%,
+        rgba(var(--color-bg-rgb), 0.92) 50%,
+        rgba(var(--color-bg-rgb), 0.88) 100%
+    );
+    pointer-events: none;
+    z-index: 0;
+}
+
 .section-bg {
     position: absolute;
     inset: 0;
@@ -750,6 +766,26 @@ body:hover .cursor-outline {
     inset: 0;
     width: 100%;
     height: 100%;
+}
+
+/* ShaderToy WebGL Canvas */
+.shader-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    opacity: 0.9;
+    pointer-events: none;
+    transition: opacity 0.8s ease;
+}
+
+/* Reduce shader intensity on mobile */
+@media (max-width: 768px) {
+    .shader-canvas {
+        opacity: 0.6;
+    }
 }
 
 /* Floating Elements */
