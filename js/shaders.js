@@ -1,7 +1,7 @@
 /**
  * SHADERTOY-STYLE WEBGL EFFECTS
- * Mandelbrot Pattern Decoration with golden amber theme
- * Based on ShaderToy shader by Shane
+ * Electric Noise Animation with golden amber theme
+ * Based on ShaderToy shader by nimitz (stormoid.com)
  */
 
 (function() {
@@ -49,182 +49,149 @@
             `;
         }
 
-        // Fragment Shader: Mandelbrot Pattern Decoration (Golden Amber Theme)
-        getMandelbrotShader() {
+        // Fragment Shader: Electric Noise Animation (Golden Amber Theme)
+        getElectricShader() {
             return `
                 precision highp float;
                 uniform vec2 u_resolution;
                 uniform float u_time;
                 uniform vec2 u_mouse;
 
+                #define time u_time * 0.15
+                #define tau 6.2831853
+
+                mat2 makem2(float theta) {
+                    float c = cos(theta);
+                    float s = sin(theta);
+                    return mat2(c, -s, s, c);
+                }
+
+                // Procedural noise to replace texture-based noise
+                float hash(vec2 p) {
+                    p = fract(p * vec2(123.34, 456.21));
+                    p += dot(p, p + 45.32);
+                    return fract(p.x * p.y);
+                }
+
+                float noise(vec2 p) {
+                    vec2 i = floor(p);
+                    vec2 f = fract(p);
+                    f = f * f * (3.0 - 2.0 * f);
+
+                    float a = hash(i);
+                    float b = hash(i + vec2(1.0, 0.0));
+                    float c = hash(i + vec2(0.0, 1.0));
+                    float d = hash(i + vec2(1.0, 1.0));
+
+                    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+                }
+
+                float fbm(vec2 p) {
+                    float z = 2.0;
+                    float rz = 0.0;
+                    for (float i = 1.0; i < 6.0; i++) {
+                        rz += abs((noise(p) - 0.5) * 2.0) / z;
+                        z = z * 2.0;
+                        p = p * 2.0;
+                    }
+                    return rz;
+                }
+
+                float dualfbm(vec2 p) {
+                    // Get two rotated fbm calls and displace the domain
+                    vec2 p2 = p * 0.7;
+                    vec2 basis = vec2(fbm(p2 - time * 1.6), fbm(p2 + time * 1.7));
+                    basis = (basis - 0.5) * 0.2;
+                    p += basis;
+
+                    // Coloring
+                    return fbm(p * makem2(time * 0.2));
+                }
+
+                float circ(vec2 p) {
+                    float r = length(p);
+                    r = log(sqrt(r));
+                    return abs(mod(r * 4.0, tau) - 3.14159) * 3.0 + 0.2;
+                }
+
                 void main() {
-                    vec2 fragCoord = gl_FragCoord.xy;
+                    // Setup system
+                    vec2 p = gl_FragCoord.xy / u_resolution.xy - 0.5;
+                    p.x *= u_resolution.x / u_resolution.y;
+                    p *= 4.0;
 
-                    // Base color
-                    vec3 col = vec3(0);
+                    float rz = dualfbm(p);
 
-                    // Single pass for performance (no AA in WebGL for mobile)
-                    vec2 p = (fragCoord - u_resolution.xy * 0.5) / u_resolution.y;
+                    // Rings
+                    p /= exp(mod(time * 10.0, 3.14159));
+                    rz *= pow(abs((0.1 - circ(p))), 0.9);
 
-                    // Time, rotating back and forth
-                    float ttm = cos(sin(u_time / 8.0)) * 6.2831;
+                    // Golden amber color theme (original was vec3(.2, 0.1, 0.4) purple)
+                    vec3 col = vec3(0.4, 0.2, 0.05) / rz;
+                    col = pow(abs(col), vec3(0.99));
 
-                    // Rotating and translating the canvas
-                    float c = cos(ttm), s = sin(ttm);
-                    p = mat2(c, s, -s, c) * p;
-                    p -= vec2(cos(u_time / 2.0) / 2.0, sin(u_time / 3.0) / 5.0);
-
-                    // Jump off point and zoom
-                    float zm = 200.0 + sin(u_time / 7.0) * 50.0;
-                    vec2 cc = vec2(-0.57735 + 0.004, 0.57735) + p / zm;
-
-                    // Position and derivative
-                    vec2 z = vec2(0), dz = vec2(0);
-
-                    // Iterations
-                    const int iter = 80;
-                    int ik = 80;
-
-                    for (int k = 0; k < 80; k++) {
-                        // Derivative: z' = z*z'*2 + 1
-                        dz = mat2(z, -z.y, z.x) * dz * 2.0 + vec2(1, 0);
-
-                        // Position: z = z*z + c
-                        z = mat2(z, -z.y, z.x) * z + cc;
-
-                        // Bailout
-                        if (dot(z, z) > 200.0) {
-                            ik = k;
-                            break;
-                        }
-                    }
-
-                    // Lines and shading
-                    float ln = step(0.0, length(z) / 15.5 - 1.0);
-
-                    // Distance shade
-                    float d = sqrt(1.0 / max(length(dz), 0.0001)) * log(dot(z, z));
-                    d = clamp(d * 50.0, 0.0, 1.0);
-
-                    // Alternating layer direction
-                    float dir = mod(float(ik), 2.0) < 0.5 ? -1.0 : 1.0;
-
-                    // Layer shading
-                    float sh = float(80 - ik) / 80.0;
-                    vec2 tuv = z / 320.0;
-
-                    // Rotate based on distance for parallax
-                    float tm = -ttm * sh * sh * 16.0;
-                    float ct = cos(tm), st = sin(tm);
-                    tuv = mat2(ct, st, -st, ct) * tuv;
-                    tuv = abs(mod(tuv, 1.0 / 8.0) - 1.0 / 16.0);
-
-                    // Grid pattern
-                    float invDz = 1.0 / max(length(dz), 0.001);
-                    float pat = smoothstep(0.0, invDz, length(tuv) - 1.0 / 32.0);
-                    pat = min(pat, smoothstep(0.0, invDz, abs(max(tuv.x, tuv.y) - 1.0 / 16.0) - 0.04 / 16.0));
-
-                    // Golden amber color palette
-                    vec3 lCol = pow(min(vec3(1.5, 1.1, 0.4) * min(d * 0.85, 0.96), 1.0), vec3(1, 2, 8)) * 1.15;
-
-                    // Apply pattern based on layer direction
-                    if (dir < 0.0) {
-                        lCol = lCol * min(pat, ln);
-                    } else {
-                        lCol = (sqrt(lCol) * 0.5 + 0.7) * max(1.0 - pat, 1.0 - ln);
-                    }
-
-                    // Fake reflection for highlights
-                    vec3 rd = normalize(vec3(p, 1.0));
-                    rd = reflect(rd, vec3(0, 0, -1));
-                    float diff = clamp(dot(z * 0.5 + 0.5, rd.xy), 0.0, 1.0) * d;
-
-                    // Reflective pattern
-                    tuv = z / 200.0;
-                    tm = -tm / 1.5 + 0.5;
-                    ct = cos(tm); st = sin(tm);
-                    tuv = mat2(ct, st, -st, ct) * tuv;
-                    tuv = abs(mod(tuv, 1.0 / 8.0) - 1.0 / 16.0);
-                    pat = smoothstep(0.0, invDz, length(tuv) - 1.0 / 32.0);
-                    pat = min(pat, smoothstep(0.0, invDz, abs(max(tuv.x, tuv.y) - 1.0 / 16.0) - 0.04 / 16.0));
-
-                    // Add gloss
-                    lCol += mix(lCol, vec3(1) * ln, 0.5) * diff * diff * 0.5 * (pat * 0.6 + 0.6);
-
-                    // Color swizzle on some layers
-                    if (mod(float(ik), 6.0) < 0.5) lCol = lCol.yxz;
-                    lCol = mix(lCol.xzy, lCol, d / 1.2);
-
-                    // Deep black fringes for depth
-                    float fringe = 1.0 - step(0.0, -(length(z) * 0.05 * float(ik) / 80.0 - 1.0));
-                    lCol = mix(lCol, vec3(0), fringe * 0.95);
-
-                    // Apply fog/shade
-                    lCol = mix(vec3(0.01, 0.008, 0.005), lCol, sh * d);
-
-                    col = min(lCol, 1.0);
-
-                    // Vignette
-                    vec2 uv = fragCoord / u_resolution.xy;
-                    col *= pow(16.0 * (1.0 - uv.x) * (1.0 - uv.y) * uv.x * uv.y, 1.0 / 8.0) * 1.15;
-
-                    gl_FragColor = vec4(sqrt(max(col, 0.0)), 1.0);
+                    gl_FragColor = vec4(col, 1.0);
                 }
             `;
         }
 
-        // Simplified Mandelbrot for other sections
-        getSimpleMandelbrotShader() {
+        // Simplified Electric for other sections
+        getSimpleElectricShader() {
             return `
                 precision highp float;
                 uniform vec2 u_resolution;
                 uniform float u_time;
                 uniform vec2 u_mouse;
 
-                void main() {
-                    vec2 fragCoord = gl_FragCoord.xy;
-                    vec2 p = (fragCoord - u_resolution.xy * 0.5) / u_resolution.y;
+                #define time u_time * 0.2
 
-                    float time = u_time * 0.3;
+                float hash(vec2 p) {
+                    p = fract(p * vec2(123.34, 456.21));
+                    p += dot(p, p + 45.32);
+                    return fract(p.x * p.y);
+                }
 
-                    // Gentle rotation
-                    float angle = sin(time * 0.5) * 0.3;
-                    float c = cos(angle), s = sin(angle);
-                    p = mat2(c, s, -s, c) * p;
+                float noise(vec2 p) {
+                    vec2 i = floor(p);
+                    vec2 f = fract(p);
+                    f = f * f * (3.0 - 2.0 * f);
+                    float a = hash(i);
+                    float b = hash(i + vec2(1.0, 0.0));
+                    float c = hash(i + vec2(0.0, 1.0));
+                    float d = hash(i + vec2(1.0, 1.0));
+                    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+                }
 
-                    // Zoom and position
-                    float zm = 150.0 + sin(time) * 30.0;
-                    vec2 cc = vec2(-0.57735, 0.57735) + p / zm;
-
-                    vec2 z = vec2(0);
-                    float brightness = 0.0;
-
-                    for (int k = 0; k < 50; k++) {
-                        z = mat2(z, -z.y, z.x) * z + cc;
-
-                        if (dot(z, z) > 100.0) {
-                            brightness = float(k) / 50.0;
-                            break;
-                        }
+                float fbm(vec2 p) {
+                    float z = 2.0;
+                    float rz = 0.0;
+                    for (float i = 1.0; i < 5.0; i++) {
+                        rz += abs((noise(p) - 0.5) * 2.0) / z;
+                        z = z * 2.0;
+                        p = p * 2.0;
                     }
+                    return rz;
+                }
 
-                    // Golden amber colors
-                    vec3 col1 = vec3(0.95, 0.70, 0.15);
-                    vec3 col2 = vec3(0.85, 0.50, 0.10);
-                    vec3 col3 = vec3(0.05, 0.04, 0.02);
+                void main() {
+                    vec2 p = gl_FragCoord.xy / u_resolution.xy - 0.5;
+                    p.x *= u_resolution.x / u_resolution.y;
+                    p *= 3.0;
 
-                    vec3 col = mix(col3, col2, brightness);
-                    col = mix(col, col1, brightness * brightness);
+                    vec2 basis = vec2(fbm(p - time), fbm(p + time * 1.1));
+                    basis = (basis - 0.5) * 0.3;
 
-                    // Pattern overlay
-                    float pattern = sin(length(z) * 10.0) * 0.5 + 0.5;
-                    col += col1 * pattern * brightness * 0.2;
+                    float rz = fbm(p + basis);
+
+                    vec3 col = vec3(0.35, 0.18, 0.04) / (rz + 0.1);
+                    col = pow(abs(col), vec3(1.1));
+                    col = clamp(col, 0.0, 1.0);
 
                     // Vignette
-                    vec2 uv = fragCoord / u_resolution.xy;
-                    col *= pow(16.0 * (1.0 - uv.x) * (1.0 - uv.y) * uv.x * uv.y, 0.15);
+                    vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+                    col *= pow(16.0 * uv.x * uv.y * (1.0 - uv.x) * (1.0 - uv.y), 0.15);
 
-                    gl_FragColor = vec4(sqrt(max(col, 0.0)), 1.0);
+                    gl_FragColor = vec4(col, 1.0);
                 }
             `;
         }
@@ -385,57 +352,86 @@
             `;
         }
 
-        // Gyroid shader (keeping as alternative)
-        getGyroidShader() {
+        // Mandelbrot shader (keeping as alternative)
+        getMandelbrotShader() {
             return `
                 precision highp float;
                 uniform vec2 u_resolution;
                 uniform float u_time;
                 uniform vec2 u_mouse;
 
-                #define PI 3.1415
-
-                float gyroid(vec3 p) {
-                    return dot(cos(p), sin(p.zxy));
-                }
-
                 void main() {
-                    vec2 uv = (gl_FragCoord.xy - u_resolution.xy * 0.5) / u_resolution.y;
+                    vec2 fragCoord = gl_FragCoord.xy;
+                    vec3 col = vec3(0);
 
-                    float time = u_time * 0.3;
+                    vec2 p = (fragCoord - u_resolution.xy * 0.5) / u_resolution.y;
 
-                    vec3 p = vec3(uv * 3.0, time);
-                    float g1 = gyroid(p) * 0.5 + 0.5;
-                    float g2 = gyroid(p * 2.0 + vec3(PI)) * 0.5 + 0.5;
-                    float g3 = gyroid(p * 0.5 - vec3(PI * 0.5)) * 0.5 + 0.5;
+                    float ttm = cos(sin(u_time / 8.0)) * 6.2831;
+                    float c = cos(ttm), s = sin(ttm);
+                    p = mat2(c, s, -s, c) * p;
+                    p -= vec2(cos(u_time / 2.0) / 2.0, sin(u_time / 3.0) / 5.0);
 
-                    float pattern = g1 * 0.5 + g2 * 0.3 + g3 * 0.2;
+                    float zm = 200.0 + sin(u_time / 7.0) * 50.0;
+                    vec2 cc = vec2(-0.57735 + 0.004, 0.57735) + p / zm;
 
-                    vec3 col1 = vec3(0.95, 0.65, 0.12);
-                    vec3 col2 = vec3(0.08, 0.06, 0.04);
-                    vec3 col3 = vec3(0.85, 0.50, 0.10);
+                    vec2 z = vec2(0), dz = vec2(0);
+                    int ik = 80;
 
-                    vec3 col = mix(col2, col1, smoothstep(0.3, 0.7, pattern));
-                    col = mix(col, col3, smoothstep(0.5, 0.9, g1));
+                    for (int k = 0; k < 80; k++) {
+                        dz = mat2(z, -z.y, z.x) * dz * 2.0 + vec2(1, 0);
+                        z = mat2(z, -z.y, z.x) * z + cc;
+                        if (dot(z, z) > 200.0) {
+                            ik = k;
+                            break;
+                        }
+                    }
 
-                    float glow = pow(pattern, 3.0) * 0.5;
-                    col += vec3(0.95, 0.75, 0.35) * glow;
+                    float ln = step(0.0, length(z) / 15.5 - 1.0);
+                    float d = sqrt(1.0 / max(length(dz), 0.0001)) * log(dot(z, z));
+                    d = clamp(d * 50.0, 0.0, 1.0);
 
-                    col *= 1.0 - length(uv) * 0.4;
-                    col = pow(col, vec3(0.4545));
+                    float dir = mod(float(ik), 2.0) < 0.5 ? -1.0 : 1.0;
+                    float sh = float(80 - ik) / 80.0;
+                    vec2 tuv = z / 320.0;
 
-                    gl_FragColor = vec4(col, 1.0);
+                    float tm = -ttm * sh * sh * 16.0;
+                    float ct = cos(tm), st = sin(tm);
+                    tuv = mat2(ct, st, -st, ct) * tuv;
+                    tuv = abs(mod(tuv, 1.0 / 8.0) - 1.0 / 16.0);
+
+                    float invDz = 1.0 / max(length(dz), 0.001);
+                    float pat = smoothstep(0.0, invDz, length(tuv) - 1.0 / 32.0);
+                    pat = min(pat, smoothstep(0.0, invDz, abs(max(tuv.x, tuv.y) - 1.0 / 16.0) - 0.04 / 16.0));
+
+                    vec3 lCol = pow(min(vec3(1.5, 1.1, 0.4) * min(d * 0.85, 0.96), 1.0), vec3(1, 2, 8)) * 1.15;
+
+                    if (dir < 0.0) {
+                        lCol = lCol * min(pat, ln);
+                    } else {
+                        lCol = (sqrt(lCol) * 0.5 + 0.7) * max(1.0 - pat, 1.0 - ln);
+                    }
+
+                    float fringe = 1.0 - step(0.0, -(length(z) * 0.05 * float(ik) / 80.0 - 1.0));
+                    lCol = mix(lCol, vec3(0), fringe * 0.95);
+                    lCol = mix(vec3(0.01, 0.008, 0.005), lCol, sh * d);
+
+                    col = min(lCol, 1.0);
+
+                    vec2 uv = fragCoord / u_resolution.xy;
+                    col *= pow(16.0 * (1.0 - uv.x) * (1.0 - uv.y) * uv.x * uv.y, 1.0 / 8.0) * 1.15;
+
+                    gl_FragColor = vec4(sqrt(max(col, 0.0)), 1.0);
                 }
             `;
         }
 
         setupShaders() {
             const shaders = {
-                mandelbrot: this.getMandelbrotShader(),
-                simpleMandelbrot: this.getSimpleMandelbrotShader(),
+                electric: this.getElectricShader(),
+                simpleElectric: this.getSimpleElectricShader(),
                 waves: this.getWavesShader(),
                 particles: this.getParticlesShader(),
-                gyroid: this.getGyroidShader()
+                mandelbrot: this.getMandelbrotShader()
             };
 
             for (const [name, fragmentSource] of Object.entries(shaders)) {
@@ -459,7 +455,8 @@
                 -1, 1, 1, -1, 1, 1
             ]), this.gl.STATIC_DRAW);
 
-            this.setProgram('mandelbrot');
+            // Default to electric shader
+            this.setProgram('electric');
         }
 
         createProgram(vertexSource, fragmentSource) {
@@ -621,11 +618,11 @@
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             window.sectionShaders = new SectionShaders();
-            console.log('%c🎨 Mandelbrot Shader Initialized', 'color: #f2a61f; font-size: 14px; font-weight: bold;');
+            console.log('%c⚡ Electric Noise Shader Initialized', 'color: #f2a61f; font-size: 14px; font-weight: bold;');
         });
     } else {
         window.sectionShaders = new SectionShaders();
-        console.log('%c🎨 Mandelbrot Shader Initialized', 'color: #f2a61f; font-size: 14px; font-weight: bold;');
+        console.log('%c⚡ Electric Noise Shader Initialized', 'color: #f2a61f; font-size: 14px; font-weight: bold;');
     }
 
 })();
