@@ -490,7 +490,6 @@
 
                 #define ITR 130
                 #define FAR 5.0
-                #define time u_time * 0.3
 
                 mat2 mm2(float a) {
                     float c = cos(a), s = sin(a);
@@ -529,24 +528,24 @@
                     return rz;
                 }
 
-                vec4 map(vec3 p) {
+                vec4 map(vec3 p, float tm) {
                     float dtp = dot(p, p);
                     p = 0.5 * p / (dtp + 0.2);
-                    p.xz = p.xz * mm2(dtp * 0.7 + time * 0.5);
-                    float r = fbm(p * 6.5 + sin(time * 0.3));
+                    p.xz = p.xz * mm2(dtp * 0.7 + tm * 0.5);
+                    float r = fbm(p * 6.5 + sin(tm * 0.3));
                     // Amber/golden color theme
                     vec4 col = vec4(0.6, 0.35, 0.1, 0.96) * r;
                     col *= smoothstep(0.0, 0.1, abs(dtp - 0.4));
                     return col;
                 }
 
-                vec4 vmarch(vec3 ro, vec3 rd) {
-                    vec4 rz = vec4(0);
+                vec4 vmarch(vec3 ro, vec3 rd, float tm) {
+                    vec4 rz = vec4(0.0);
                     float t = 2.2;
                     for(int i = 0; i < ITR; i++) {
                         if(rz.a > 0.99 || t > FAR) break;
                         vec3 pos = ro + t * rd;
-                        vec4 col = map(pos);
+                        vec4 col = map(pos, tm);
                         col.a *= 0.3;
                         col.rgb *= col.a;
                         rz = rz + col * (1.0 - rz.a);
@@ -558,6 +557,7 @@
                 void main() {
                     vec2 p = gl_FragCoord.xy / u_resolution.xy - 0.5;
                     p.x *= u_resolution.x / u_resolution.y;
+                    float tm = u_time * 0.3;
 
                     // Camera setup with mouse interaction
                     float md = u_mouse.x * 6.28318 - 3.14159;
@@ -565,14 +565,14 @@
                     vec3 ro = vec3(0.0, 0.0, -3.0);
                     vec3 rd = normalize(vec3(p, 0.7));
 
-                    mat2 mx = mm2(time * 0.1 + md);
-                    mat2 my = mm2(time * 0.05 + md2);
+                    mat2 mx = mm2(tm * 0.1 + md);
+                    mat2 my = mm2(tm * 0.05 + md2);
                     ro.xz = ro.xz * mx;
                     rd.xz = rd.xz * mx;
                     ro.xy = ro.xy * my;
                     rd.xy = rd.xy * my;
 
-                    vec4 col = vmarch(ro, rd);
+                    vec4 col = vmarch(ro, rd, tm);
 
                     // Color grading for amber theme
                     col.rgb = pow(col.rgb, vec3(0.9, 0.85, 0.7));
