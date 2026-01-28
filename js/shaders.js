@@ -1,7 +1,6 @@
 /**
  * SHADERTOY-STYLE WEBGL EFFECTS
- * Electric Noise Animation with golden amber theme
- * Based on ShaderToy shader by nimitz (stormoid.com)
+ * Abstract Geometric Tunnel with golden amber theme
  */
 
 (function() {
@@ -49,7 +48,134 @@
             `;
         }
 
-        // Fragment Shader: Electric Noise Animation (Golden Amber Theme)
+        // Fragment Shader: Abstract Geometric Tunnel (Golden Amber Theme)
+        getTunnelShader() {
+            return `
+                precision highp float;
+                uniform vec2 u_resolution;
+                uniform float u_time;
+                uniform vec2 u_mouse;
+
+                float map(vec3 p) {
+                    vec3 n = vec3(0.0, 1.0, 0.0);
+                    float k1 = 1.9;
+                    float k2 = (sin(p.x * k1) + sin(p.z * k1)) * 0.8;
+                    float k3 = (sin(p.y * k1) + sin(p.z * k1)) * 0.8;
+                    float w1 = 4.0 - dot(abs(p), normalize(n)) + k2;
+                    float w2 = 4.0 - dot(abs(p), normalize(n.yzx)) + k3;
+                    float s1 = length(mod(p.xy + vec2(sin((p.z + p.x) * 2.0) * 0.3, cos((p.z + p.x) * 1.0) * 0.5), 2.0) - 1.0) - 0.2;
+                    float s2 = length(mod(0.5 + p.yz + vec2(sin((p.z + p.x) * 2.0) * 0.3, cos((p.z + p.x) * 1.0) * 0.3), 2.0) - 1.0) - 0.2;
+                    return min(w1, min(w2, min(s1, s2)));
+                }
+
+                vec2 rot(vec2 p, float a) {
+                    return vec2(
+                        p.x * cos(a) - p.y * sin(a),
+                        p.x * sin(a) + p.y * cos(a));
+                }
+
+                void main() {
+                    float time = u_time;
+                    vec2 uv = (gl_FragCoord.xy / u_resolution.xy) * 2.0 - 1.0;
+                    uv.x *= u_resolution.x / u_resolution.y;
+
+                    vec3 dir = normalize(vec3(uv, 1.0));
+                    dir.xz = rot(dir.xz, time * 0.23);
+                    dir = dir.yzx;
+                    dir.xz = rot(dir.xz, time * 0.2);
+                    dir = dir.yzx;
+
+                    vec3 pos = vec3(0.0, 0.0, time);
+                    vec3 col = vec3(0.0);
+                    float t = 0.0;
+                    float tt = 0.0;
+
+                    for(int i = 0; i < 80; i++) {
+                        tt = map(pos + dir * t);
+                        if(tt < 0.001) break;
+                        t += tt * 0.45;
+                    }
+
+                    vec3 ip = pos + dir * t;
+                    col = vec3(t * 0.1);
+                    col = sqrt(col);
+
+                    // Golden amber color theme
+                    vec3 baseCol = vec3(0.95, 0.6, 0.15);  // Amber
+                    vec3 accentCol = vec3(0.85, 0.4, 0.1); // Deep orange
+
+                    vec4 finalCol = vec4(0.05 * t + abs(dir) * col + max(0.0, map(ip - 0.1) - tt), 1.0);
+
+                    // Apply amber tint
+                    finalCol.rgb = mix(finalCol.rgb, baseCol * finalCol.rgb, 0.6);
+                    finalCol.rgb += accentCol * (1.0 / (t * t + 1.0)) * 0.3;
+
+                    // Alpha based on distance
+                    finalCol.a = clamp(1.0 / (t * t * t * t * 0.01 + 0.1), 0.0, 1.0);
+
+                    // Tone mapping
+                    finalCol.rgb = pow(finalCol.rgb, vec3(0.85));
+
+                    gl_FragColor = vec4(finalCol.rgb, 1.0);
+                }
+            `;
+        }
+
+        // Simplified Tunnel for other sections
+        getSimpleTunnelShader() {
+            return `
+                precision highp float;
+                uniform vec2 u_resolution;
+                uniform float u_time;
+                uniform vec2 u_mouse;
+
+                float map(vec3 p) {
+                    float k1 = 1.5;
+                    float k2 = (sin(p.x * k1) + sin(p.z * k1)) * 0.6;
+                    float w1 = 3.0 - length(p.xy) + k2;
+                    float s1 = length(mod(p.xy, 2.0) - 1.0) - 0.3;
+                    return min(w1, s1);
+                }
+
+                vec2 rot(vec2 p, float a) {
+                    float c = cos(a), s = sin(a);
+                    return vec2(p.x * c - p.y * s, p.x * s + p.y * c);
+                }
+
+                void main() {
+                    float time = u_time * 0.5;
+                    vec2 uv = (gl_FragCoord.xy / u_resolution.xy) * 2.0 - 1.0;
+                    uv.x *= u_resolution.x / u_resolution.y;
+
+                    vec3 dir = normalize(vec3(uv, 1.0));
+                    dir.xz = rot(dir.xz, time * 0.15);
+
+                    vec3 pos = vec3(0.0, 0.0, time * 2.0);
+                    float t = 0.0;
+
+                    for(int i = 0; i < 50; i++) {
+                        float d = map(pos + dir * t);
+                        if(d < 0.01) break;
+                        t += d * 0.5;
+                    }
+
+                    vec3 col = vec3(t * 0.08);
+                    col = sqrt(col);
+
+                    // Amber tint
+                    col *= vec3(0.95, 0.65, 0.2);
+                    col += vec3(0.85, 0.45, 0.1) * (1.0 / (t + 1.0)) * 0.2;
+
+                    // Vignette
+                    vec2 vuv = gl_FragCoord.xy / u_resolution.xy;
+                    col *= pow(16.0 * vuv.x * vuv.y * (1.0 - vuv.x) * (1.0 - vuv.y), 0.15);
+
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `;
+        }
+
+        // Electric Noise shader (previous favorite)
         getElectricShader() {
             return `
                 precision highp float;
@@ -66,7 +192,6 @@
                     return mat2(c, -s, s, c);
                 }
 
-                // Procedural noise to replace texture-based noise
                 float hash(vec2 p) {
                     p = fract(p * vec2(123.34, 456.21));
                     p += dot(p, p + 45.32);
@@ -77,12 +202,10 @@
                     vec2 i = floor(p);
                     vec2 f = fract(p);
                     f = f * f * (3.0 - 2.0 * f);
-
                     float a = hash(i);
                     float b = hash(i + vec2(1.0, 0.0));
                     float c = hash(i + vec2(0.0, 1.0));
                     float d = hash(i + vec2(1.0, 1.0));
-
                     return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
                 }
 
@@ -98,13 +221,10 @@
                 }
 
                 float dualfbm(vec2 p) {
-                    // Get two rotated fbm calls and displace the domain
                     vec2 p2 = p * 0.7;
                     vec2 basis = vec2(fbm(p2 - time * 1.6), fbm(p2 + time * 1.7));
                     basis = (basis - 0.5) * 0.2;
                     p += basis;
-
-                    // Coloring
                     return fbm(p * makem2(time * 0.2));
                 }
 
@@ -115,81 +235,16 @@
                 }
 
                 void main() {
-                    // Setup system
                     vec2 p = gl_FragCoord.xy / u_resolution.xy - 0.5;
                     p.x *= u_resolution.x / u_resolution.y;
                     p *= 4.0;
 
                     float rz = dualfbm(p);
-
-                    // Rings
                     p /= exp(mod(time * 10.0, 3.14159));
                     rz *= pow(abs((0.1 - circ(p))), 0.9);
 
-                    // Golden amber color theme (original was vec3(.2, 0.1, 0.4) purple)
                     vec3 col = vec3(0.4, 0.2, 0.05) / rz;
                     col = pow(abs(col), vec3(0.99));
-
-                    gl_FragColor = vec4(col, 1.0);
-                }
-            `;
-        }
-
-        // Simplified Electric for other sections
-        getSimpleElectricShader() {
-            return `
-                precision highp float;
-                uniform vec2 u_resolution;
-                uniform float u_time;
-                uniform vec2 u_mouse;
-
-                #define time u_time * 0.2
-
-                float hash(vec2 p) {
-                    p = fract(p * vec2(123.34, 456.21));
-                    p += dot(p, p + 45.32);
-                    return fract(p.x * p.y);
-                }
-
-                float noise(vec2 p) {
-                    vec2 i = floor(p);
-                    vec2 f = fract(p);
-                    f = f * f * (3.0 - 2.0 * f);
-                    float a = hash(i);
-                    float b = hash(i + vec2(1.0, 0.0));
-                    float c = hash(i + vec2(0.0, 1.0));
-                    float d = hash(i + vec2(1.0, 1.0));
-                    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-                }
-
-                float fbm(vec2 p) {
-                    float z = 2.0;
-                    float rz = 0.0;
-                    for (float i = 1.0; i < 5.0; i++) {
-                        rz += abs((noise(p) - 0.5) * 2.0) / z;
-                        z = z * 2.0;
-                        p = p * 2.0;
-                    }
-                    return rz;
-                }
-
-                void main() {
-                    vec2 p = gl_FragCoord.xy / u_resolution.xy - 0.5;
-                    p.x *= u_resolution.x / u_resolution.y;
-                    p *= 3.0;
-
-                    vec2 basis = vec2(fbm(p - time), fbm(p + time * 1.1));
-                    basis = (basis - 0.5) * 0.3;
-
-                    float rz = fbm(p + basis);
-
-                    vec3 col = vec3(0.35, 0.18, 0.04) / (rz + 0.1);
-                    col = pow(abs(col), vec3(1.1));
-                    col = clamp(col, 0.0, 1.0);
-
-                    // Vignette
-                    vec2 uv = gl_FragCoord.xy / u_resolution.xy;
-                    col *= pow(16.0 * uv.x * uv.y * (1.0 - uv.x) * (1.0 - uv.y), 0.15);
 
                     gl_FragColor = vec4(col, 1.0);
                 }
@@ -352,7 +407,7 @@
             `;
         }
 
-        // Mandelbrot shader (keeping as alternative)
+        // Mandelbrot shader
         getMandelbrotShader() {
             return `
                 precision highp float;
@@ -427,8 +482,9 @@
 
         setupShaders() {
             const shaders = {
+                tunnel: this.getTunnelShader(),
+                simpleTunnel: this.getSimpleTunnelShader(),
                 electric: this.getElectricShader(),
-                simpleElectric: this.getSimpleElectricShader(),
                 waves: this.getWavesShader(),
                 particles: this.getParticlesShader(),
                 mandelbrot: this.getMandelbrotShader()
@@ -455,8 +511,8 @@
                 -1, 1, 1, -1, 1, 1
             ]), this.gl.STATIC_DRAW);
 
-            // Default to electric shader
-            this.setProgram('electric');
+            // Default to tunnel shader
+            this.setProgram('tunnel');
         }
 
         createProgram(vertexSource, fragmentSource) {
@@ -618,11 +674,11 @@
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             window.sectionShaders = new SectionShaders();
-            console.log('%c⚡ Electric Noise Shader Initialized', 'color: #f2a61f; font-size: 14px; font-weight: bold;');
+            console.log('%c🚀 Abstract Tunnel Shader Initialized', 'color: #f2a61f; font-size: 14px; font-weight: bold;');
         });
     } else {
         window.sectionShaders = new SectionShaders();
-        console.log('%c⚡ Electric Noise Shader Initialized', 'color: #f2a61f; font-size: 14px; font-weight: bold;');
+        console.log('%c🚀 Abstract Tunnel Shader Initialized', 'color: #f2a61f; font-size: 14px; font-weight: bold;');
     }
 
 })();
