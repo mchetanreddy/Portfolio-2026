@@ -691,8 +691,8 @@
                 -1, 1, 1, -1, 1, 1
             ]), this.gl.STATIC_DRAW);
 
-            // Default to fractal shader
-            this.setProgram('fractal');
+            // Default to mandelbrot shader
+            this.setProgram('mandelbrot');
         }
 
         createProgram(vertexSource, fragmentSource) {
