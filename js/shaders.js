@@ -510,8 +510,6 @@
                 }
             `;
         }
-            `;
-        }
 
         // Magnetismic shader by nimitz (Golden Amber Theme)
         getMagnetismicShader() {
