@@ -407,7 +407,7 @@
             `;
         }
 
-        // Mandelbrot shader
+        // Mandelbrot Pattern Decoration shader (Golden Amber Theme)
         getMandelbrotShader() {
             return `
                 precision highp float;
@@ -417,66 +417,99 @@
 
                 void main() {
                     vec2 fragCoord = gl_FragCoord.xy;
-                    vec3 col = vec3(0);
+                    vec3 col = vec3(0.0);
 
-                    vec2 p = (fragCoord - u_resolution.xy * 0.5) / u_resolution.y;
+                    // 2x2 Anti-aliasing
+                    for(int j = 0; j < 2; j++) {
+                        for(int i = 0; i < 2; i++) {
+                            vec2 p = (fragCoord + vec2(float(i), float(j)) / 2.0 - u_resolution.xy * 0.5) / u_resolution.y;
 
-                    float ttm = cos(sin(u_time / 8.0)) * 6.2831;
-                    float c = cos(ttm), s = sin(ttm);
-                    p = mat2(c, s, -s, c) * p;
-                    p -= vec2(cos(u_time / 2.0) / 2.0, sin(u_time / 3.0) / 5.0);
+                            float ttm = cos(sin(u_time / 8.0)) * 6.2831;
+                            float c = cos(ttm), s = sin(ttm);
+                            p = mat2(c, s, -s, c) * p;
+                            p -= vec2(cos(u_time / 2.0) / 2.0, sin(u_time / 3.0) / 5.0);
 
-                    float zm = 200.0 + sin(u_time / 7.0) * 50.0;
-                    vec2 cc = vec2(-0.57735 + 0.004, 0.57735) + p / zm;
+                            float zm = 200.0 + sin(u_time / 7.0) * 50.0;
+                            vec2 cc = vec2(-0.57735 + 0.004, 0.57735) + p / zm;
 
-                    vec2 z = vec2(0), dz = vec2(0);
-                    int ik = 80;
+                            vec2 z = vec2(0.0), dz = vec2(0.0);
+                            int ik = 128;
 
-                    for (int k = 0; k < 80; k++) {
-                        dz = mat2(z, -z.y, z.x) * dz * 2.0 + vec2(1, 0);
-                        z = mat2(z, -z.y, z.x) * z + cc;
-                        if (dot(z, z) > 200.0) {
-                            ik = k;
-                            break;
+                            for(int k = 0; k < 128; k++) {
+                                dz = mat2(z, -z.y, z.x) * dz * 2.0 + vec2(1.0, 0.0);
+                                z = mat2(z, -z.y, z.x) * z + cc;
+                                if(dot(z, z) > 200.0) {
+                                    ik = k;
+                                    break;
+                                }
+                            }
+
+                            float ln = step(0.0, length(z) / 15.5 - 1.0);
+                            float d = sqrt(1.0 / max(length(dz), 0.0001)) * log(dot(z, z));
+                            d = clamp(d * 50.0, 0.0, 1.0);
+
+                            float dir = mod(float(ik), 2.0) < 0.5 ? -1.0 : 1.0;
+                            float sh = float(128 - ik) / 128.0;
+                            vec2 tuv = z / 320.0;
+
+                            float tm = -ttm * sh * sh * 16.0;
+                            float ct = cos(tm), st = sin(tm);
+                            tuv = mat2(ct, st, -st, ct) * tuv;
+                            tuv = abs(mod(tuv, 1.0 / 8.0) - 1.0 / 16.0);
+
+                            float invDz = 1.0 / max(length(dz), 0.001);
+                            float pat = smoothstep(0.0, invDz, length(tuv) - 1.0 / 32.0);
+                            pat = min(pat, smoothstep(0.0, invDz, abs(max(tuv.x, tuv.y) - 1.0 / 16.0) - 0.04 / 16.0));
+
+                            // Amber/gold color theme
+                            vec3 lCol = pow(min(vec3(1.5, 1.1, 0.4) * min(d * 0.85, 0.96), 1.0), vec3(1.0, 2.0, 8.0)) * 1.15;
+
+                            if(dir < 0.0) {
+                                lCol = lCol * min(pat, ln);
+                            } else {
+                                lCol = (sqrt(lCol) * 0.5 + 0.7) * max(1.0 - pat, 1.0 - ln);
+                            }
+
+                            // Fake glossy reflection
+                            vec3 rd = normalize(vec3(p, 1.0));
+                            rd = reflect(rd, vec3(0.0, 0.0, -1.0));
+                            float diff = clamp(dot(z * 0.5 + 0.5, rd.xy), 0.0, 1.0) * d;
+
+                            // Reflective pattern
+                            vec2 tuv2 = z / 200.0;
+                            float tm2 = -tm / 1.5 + 0.5;
+                            float ct2 = cos(tm2), st2 = sin(tm2);
+                            tuv2 = mat2(ct2, st2, -st2, ct2) * tuv2;
+                            tuv2 = abs(mod(tuv2, 1.0 / 8.0) - 1.0 / 16.0);
+                            float pat2 = smoothstep(0.0, invDz, length(tuv2) - 1.0 / 32.0);
+                            pat2 = min(pat2, smoothstep(0.0, invDz, abs(max(tuv2.x, tuv2.y) - 1.0 / 16.0) - 0.04 / 16.0));
+
+                            // Add gloss highlights
+                            lCol += mix(lCol, vec3(1.0) * ln, 0.5) * diff * diff * 0.5 * (pat2 * 0.6 + 0.6);
+
+                            // Color swizzle on every 6th layer
+                            if(mod(float(ik), 6.0) < 0.5) lCol = lCol.yxz;
+                            lCol = mix(lCol.xzy, lCol, d / 1.2);
+
+                            // Deep black fringes for depth
+                            float fringe = 1.0 - step(0.0, -(length(z) * 0.05 * float(ik) / 128.0 - 1.0));
+                            lCol = mix(lCol, vec3(0.0), fringe * 0.95);
+                            lCol = mix(vec3(0.01, 0.008, 0.005), lCol, sh * d);
+
+                            col += min(lCol, 1.0);
                         }
                     }
 
-                    float ln = step(0.0, length(z) / 15.5 - 1.0);
-                    float d = sqrt(1.0 / max(length(dz), 0.0001)) * log(dot(z, z));
-                    d = clamp(d * 50.0, 0.0, 1.0);
+                    col /= 4.0; // Divide by AA samples
 
-                    float dir = mod(float(ik), 2.0) < 0.5 ? -1.0 : 1.0;
-                    float sh = float(80 - ik) / 80.0;
-                    vec2 tuv = z / 320.0;
-
-                    float tm = -ttm * sh * sh * 16.0;
-                    float ct = cos(tm), st = sin(tm);
-                    tuv = mat2(ct, st, -st, ct) * tuv;
-                    tuv = abs(mod(tuv, 1.0 / 8.0) - 1.0 / 16.0);
-
-                    float invDz = 1.0 / max(length(dz), 0.001);
-                    float pat = smoothstep(0.0, invDz, length(tuv) - 1.0 / 32.0);
-                    pat = min(pat, smoothstep(0.0, invDz, abs(max(tuv.x, tuv.y) - 1.0 / 16.0) - 0.04 / 16.0));
-
-                    vec3 lCol = pow(min(vec3(1.5, 1.1, 0.4) * min(d * 0.85, 0.96), 1.0), vec3(1, 2, 8)) * 1.15;
-
-                    if (dir < 0.0) {
-                        lCol = lCol * min(pat, ln);
-                    } else {
-                        lCol = (sqrt(lCol) * 0.5 + 0.7) * max(1.0 - pat, 1.0 - ln);
-                    }
-
-                    float fringe = 1.0 - step(0.0, -(length(z) * 0.05 * float(ik) / 80.0 - 1.0));
-                    lCol = mix(lCol, vec3(0), fringe * 0.95);
-                    lCol = mix(vec3(0.01, 0.008, 0.005), lCol, sh * d);
-
-                    col = min(lCol, 1.0);
-
+                    // Vignette
                     vec2 uv = fragCoord / u_resolution.xy;
                     col *= pow(16.0 * (1.0 - uv.x) * (1.0 - uv.y) * uv.x * uv.y, 1.0 / 8.0) * 1.15;
 
                     gl_FragColor = vec4(sqrt(max(col, 0.0)), 1.0);
                 }
+            `;
+        }
             `;
         }
 
